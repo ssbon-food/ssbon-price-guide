@@ -1,166 +1,75 @@
 <!DOCTYPE html>
-<!--
-  =====================================================================
-  순수본 식품본부 · 상품 마스터 (products.html)
-  - 등록된 상품을 표로 보여주고, 추가/수정/활성토글
-  - 저장 위치: Supabase 'products' 테이블
-  - 권한: master/admin 만 추가·수정 가능, 그 외에는 조회만
-  =====================================================================
--->
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>상품 마스터 · 순수본 식품본부</title>
-
-  <!-- 한글이 예쁘게 보이는 무료 폰트(Pretendard). 인터넷에서 불러옵니다. -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
-
-  <!-- Supabase 자바스크립트 SDK. 이게 있어야 DB와 대화할 수 있어요. -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
   <style>
-    /* ===== 색상·간격을 한 곳에서 관리(CSS 변수) ===== */
     :root {
-      --bg: #f4f6f3;          /* 전체 배경(아주 옅은 연두빛 회색) */
-      --panel: #ffffff;       /* 카드/표 배경 */
-      --ink: #1d2620;         /* 기본 글자색 */
-      --muted: #6b7770;       /* 흐린 글자색 */
-      --line: #e3e8e3;        /* 경계선 */
-      --accent: #2f7d4f;      /* 포인트 그린 */
-      --accent-soft: #e7f2ec; /* 옅은 그린(배경용) */
-      --warn: #b4441f;        /* 경고/비활성 색 */
-      --radius: 12px;
-      --shadow: 0 1px 2px rgba(20,40,30,.05), 0 8px 24px rgba(20,40,30,.06);
+      --bg:#f4f6f3; --panel:#ffffff; --ink:#1d2620; --muted:#6b7770; --line:#e3e8e3;
+      --accent:#2f7d4f; --accent-soft:#e7f2ec; --warn:#b4441f; --radius:12px;
+      --shadow:0 1px 2px rgba(20,40,30,.05),0 8px 24px rgba(20,40,30,.06);
     }
-
-    * { box-sizing: border-box; }
-    html, body { margin: 0; padding: 0; }
-    body {
-      font-family: "Pretendard", -apple-system, "Malgun Gothic", sans-serif;
-      background: var(--bg);
-      color: var(--ink);
-      font-size: 15px;
-      line-height: 1.5;
-    }
-
-    /* ===== 상단 헤더 ===== */
-    header {
-      background: var(--panel);
-      border-bottom: 1px solid var(--line);
-      padding: 14px 22px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-      position: sticky; top: 0; z-index: 10;
-    }
-    .brand { display: flex; align-items: center; gap: 10px; }
-    .brand .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); }
-    .brand h1 { font-size: 17px; margin: 0; font-weight: 700; letter-spacing: -.2px; }
-    .brand small { color: var(--muted); font-weight: 500; }
-    .who { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--muted); }
-    .role-badge {
-      background: var(--accent-soft); color: var(--accent);
-      padding: 3px 9px; border-radius: 999px; font-weight: 600; font-size: 12px;
-    }
-
-    /* ===== 본문 컨테이너 ===== */
-    main { max-width: 1100px; margin: 24px auto; padding: 0 18px; }
-
-    /* ===== 도구막대(검색·버튼) ===== */
-    .toolbar {
-      display: flex; align-items: center; gap: 10px;
-      flex-wrap: wrap; margin-bottom: 16px;
-    }
-    .toolbar .search {
-      flex: 1; min-width: 200px;
-      padding: 10px 14px; border: 1px solid var(--line); border-radius: 10px;
-      background: var(--panel); font-size: 14px;
-    }
-    .toolbar .search:focus { outline: none; border-color: var(--accent); }
-    .chk { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 13px; cursor: pointer; user-select: none; }
-
-    button {
-      font-family: inherit; cursor: pointer; border: none; border-radius: 10px;
-      font-size: 14px; font-weight: 600; padding: 10px 16px; transition: .12s;
-    }
-    .btn-primary { background: var(--accent); color: #fff; }
-    .btn-primary:hover { background: #266a42; }
-    .btn-ghost { background: var(--panel); color: var(--ink); border: 1px solid var(--line); }
-    .btn-ghost:hover { background: #f0f3f0; }
-    .btn-sm { padding: 6px 12px; font-size: 13px; }
-
-    /* ===== 표 ===== */
-    .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
-    table { width: 100%; border-collapse: collapse; }
-    thead th {
-      text-align: left; font-size: 12.5px; color: var(--muted); font-weight: 600;
-      padding: 12px 14px; border-bottom: 1px solid var(--line); white-space: nowrap;
-      background: #fafbfa;
-    }
-    th.num, td.num { text-align: right; }
-    tbody td { padding: 13px 14px; border-bottom: 1px solid var(--line); font-size: 14px; }
-    tbody tr:last-child td { border-bottom: none; }
-    tbody tr:hover { background: #f7faf8; }
-    tbody tr.inactive { opacity: .5; }
-
-    .code { font-weight: 600; color: var(--ink); }
-    .temp-tag { font-size: 12px; padding: 2px 8px; border-radius: 6px; background: #eef1ef; color: #45504a; white-space: nowrap; }
-    .status-on { color: var(--accent); font-weight: 600; font-size: 13px; }
-    .status-off { color: var(--warn); font-weight: 600; font-size: 13px; }
-
-    .empty { padding: 48px 20px; text-align: center; color: var(--muted); }
-
-    /* ===== 게이트(로그인/승인 안내) 화면 ===== */
-    .gate { max-width: 420px; margin: 80px auto; text-align: center; padding: 0 20px; }
-    .gate .icon { font-size: 40px; }
-    .gate h2 { margin: 14px 0 8px; }
-    .gate p { color: var(--muted); margin: 0 0 20px; }
-
-    /* ===== 모달(추가·수정 입력창) ===== */
-    .overlay {
-      position: fixed; inset: 0; background: rgba(20,30,25,.45);
-      display: none; align-items: center; justify-content: center; z-index: 50; padding: 20px;
-    }
-    .overlay.show { display: flex; }
-    .modal {
-      background: var(--panel); border-radius: 16px; width: 100%; max-width: 520px;
-      box-shadow: 0 20px 60px rgba(0,0,0,.25); max-height: 90vh; overflow: auto;
-    }
-    .modal-head { padding: 20px 24px; border-bottom: 1px solid var(--line); font-size: 17px; font-weight: 700; }
-    .modal-body { padding: 22px 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-    .field { display: flex; flex-direction: column; gap: 6px; }
-    .field.full { grid-column: 1 / -1; }
-    .field label { font-size: 13px; color: var(--muted); font-weight: 600; }
-    .field label .req { color: var(--warn); }
-    .field input, .field select {
-      font-family: inherit; font-size: 14px; padding: 10px 12px;
-      border: 1px solid var(--line); border-radius: 9px; background: #fff; color: var(--ink);
-    }
-    .field input:focus, .field select:focus { outline: none; border-color: var(--accent); }
-    .field input.num { text-align: right; }
-    .modal-foot { padding: 16px 24px; border-top: 1px solid var(--line); display: flex; justify-content: flex-end; gap: 10px; }
-
-    @media (max-width: 560px) {
-      .modal-body { grid-template-columns: 1fr; }
-      thead { display: none; } /* 좁은 화면에선 헤더 숨김(간단 대응) */
-    }
+    *{box-sizing:border-box;} html,body{margin:0;padding:0;}
+    body{font-family:"Pretendard",-apple-system,"Malgun Gothic",sans-serif;background:var(--bg);color:var(--ink);font-size:15px;line-height:1.5;}
+    header{background:var(--panel);border-bottom:1px solid var(--line);padding:14px 22px;display:flex;align-items:center;justify-content:space-between;gap:16px;position:sticky;top:0;z-index:10;}
+    .brand{display:flex;align-items:center;gap:10px;}
+    .brand .dot{width:10px;height:10px;border-radius:50%;background:var(--accent);}
+    .brand h1{font-size:17px;margin:0;font-weight:700;}
+    .brand small{color:var(--muted);font-weight:500;}
+    .who{display:flex;align-items:center;gap:12px;font-size:13px;color:var(--muted);}
+    .role-badge{background:var(--accent-soft);color:var(--accent);padding:3px 9px;border-radius:999px;font-weight:600;font-size:12px;}
+    main{max-width:960px;margin:24px auto;padding:0 18px;}
+    .toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px;}
+    .toolbar .search{flex:1;min-width:200px;padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:var(--panel);font-size:14px;}
+    .toolbar .search:focus{outline:none;border-color:var(--accent);}
+    .chk{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:13px;cursor:pointer;user-select:none;}
+    button{font-family:inherit;cursor:pointer;border:none;border-radius:10px;font-size:14px;font-weight:600;padding:10px 16px;transition:.12s;}
+    .btn-primary{background:var(--accent);color:#fff;} .btn-primary:hover{background:#266a42;}
+    .btn-ghost{background:var(--panel);color:var(--ink);border:1px solid var(--line);} .btn-ghost:hover{background:#f0f3f0;}
+    .btn-sm{padding:6px 12px;font-size:13px;}
+    .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;}
+    table{width:100%;border-collapse:collapse;}
+    thead th{text-align:left;font-size:12.5px;color:var(--muted);font-weight:600;padding:12px 14px;border-bottom:1px solid var(--line);white-space:nowrap;background:#fafbfa;}
+    th.num,td.num{text-align:right;}
+    tbody td{padding:13px 14px;border-bottom:1px solid var(--line);font-size:14px;}
+    tbody tr:last-child td{border-bottom:none;}
+    tbody tr:hover{background:#f7faf8;}
+    tbody tr.inactive{opacity:.5;}
+    .code{font-weight:600;}
+    .temp-tag{font-size:12px;padding:2px 8px;border-radius:6px;background:#eef1ef;color:#45504a;white-space:nowrap;}
+    .status-on{color:var(--accent);font-weight:600;font-size:13px;}
+    .status-off{color:var(--warn);font-weight:600;font-size:13px;}
+    .empty{padding:48px 20px;text-align:center;color:var(--muted);}
+    .gate{max-width:420px;margin:80px auto;text-align:center;padding:0 20px;}
+    .gate .icon{font-size:40px;} .gate h2{margin:14px 0 8px;} .gate p{color:var(--muted);margin:0 0 20px;}
+    .overlay{position:fixed;inset:0;background:rgba(20,30,25,.45);display:none;align-items:center;justify-content:center;z-index:50;padding:20px;}
+    .overlay.show{display:flex;}
+    .modal{background:var(--panel);border-radius:16px;width:100%;max-width:480px;box-shadow:0 20px 60px rgba(0,0,0,.25);max-height:90vh;overflow:auto;}
+    .modal-head{padding:20px 24px;border-bottom:1px solid var(--line);font-size:17px;font-weight:700;}
+    .modal-body{padding:22px 24px;display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+    .field{display:flex;flex-direction:column;gap:6px;}
+    .field.full{grid-column:1/-1;}
+    .field label{font-size:13px;color:var(--muted);font-weight:600;}
+    .field label .req{color:var(--warn);}
+    .field input,.field select{font-family:inherit;font-size:14px;padding:10px 12px;border:1px solid var(--line);border-radius:9px;background:#fff;color:var(--ink);}
+    .field input:focus,.field select:focus{outline:none;border-color:var(--accent);}
+    .field input.num{text-align:right;}
+    .field .hint{font-size:12px;color:var(--muted);}
+    .modal-foot{padding:16px 24px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:10px;}
   </style>
 </head>
-
 <body>
-  <!-- ===================================================================
-     공통 상단 메뉴 (네비게이션)
-     · 이 블록 전체를 simulator.html 과 products.html 의
-       <body> 바로 다음 줄에 "똑같이" 붙여넣으세요.
-     · 지금 보고 있는 페이지는 자동으로 초록색으로 표시됩니다.
-     =================================================================== -->
+
+<!-- 공통 네비게이션 -->
 <div class="ssbon-nav">
   <div class="ssbon-nav-inner">
     <span class="ssbon-nav-brand"><i class="ssbon-nav-dot"></i>순수본 가격도구</span>
     <nav class="ssbon-nav-links">
       <a href="simulator.html" data-nav="simulator.html">가격 시뮬레이터</a>
+      <a href="pricing.html" data-nav="pricing.html">가격정책</a>
       <a href="products.html" data-nav="products.html">상품 마스터</a>
       <a href="channels.html" data-nav="channels.html">채널 마스터</a>
       <a href="freight.html" data-nav="freight.html">운반비 마스터</a>
@@ -168,390 +77,256 @@
   </div>
 </div>
 <style>
-  .ssbon-nav { background:#fff; border-bottom:1px solid #e3e8e3; font-family:"Pretendard",-apple-system,"Malgun Gothic",sans-serif; }
-  .ssbon-nav-inner { max-width:1100px; margin:0 auto; padding:0 18px; height:48px; display:flex; align-items:center; gap:20px; }
-  .ssbon-nav-brand { display:flex; align-items:center; gap:7px; font-size:13px; font-weight:700; color:#1d2620; white-space:nowrap; }
-  .ssbon-nav-dot { width:8px; height:8px; border-radius:50%; background:#2f7d4f; display:inline-block; }
-  .ssbon-nav-links { display:flex; gap:6px; }
-  .ssbon-nav-links a { text-decoration:none; font-size:14px; font-weight:600; color:#6b7770; padding:7px 13px; border-radius:8px; transition:.12s; }
-  .ssbon-nav-links a:hover { background:#f0f3f0; color:#1d2620; }
-  .ssbon-nav-links a.active { background:#e7f2ec; color:#2f7d4f; }
+  .ssbon-nav{background:#fff;border-bottom:1px solid #e3e8e3;font-family:"Pretendard",-apple-system,"Malgun Gothic",sans-serif;}
+  .ssbon-nav-inner{max-width:1100px;margin:0 auto;padding:0 18px;height:48px;display:flex;align-items:center;gap:20px;}
+  .ssbon-nav-brand{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:700;color:#1d2620;white-space:nowrap;}
+  .ssbon-nav-dot{width:8px;height:8px;border-radius:50%;background:#2f7d4f;display:inline-block;}
+  .ssbon-nav-links{display:flex;gap:6px;}
+  .ssbon-nav-links a{text-decoration:none;font-size:14px;font-weight:600;color:#6b7770;padding:7px 13px;border-radius:8px;transition:.12s;}
+  .ssbon-nav-links a:hover{background:#f0f3f0;color:#1d2620;}
+  .ssbon-nav-links a.active{background:#e7f2ec;color:#2f7d4f;}
 </style>
 <script>
-  // 현재 페이지에 해당하는 메뉴를 자동으로 강조 표시
-  (function () {
-    var page = location.pathname.split("/").pop() || "index.html";
-    document.querySelectorAll('.ssbon-nav-links a[data-nav]').forEach(function (a) {
-      if (a.getAttribute("data-nav") === page) a.classList.add("active");
+  (function(){
+    var page=location.pathname.split("/").pop()||"index.html";
+    document.querySelectorAll('.ssbon-nav-links a[data-nav]').forEach(function(a){
+      if(a.getAttribute("data-nav")===page) a.classList.add("active");
     });
   })();
 </script>
-  <!-- (1) 게이트: 로그인 안됨 / 승인 대기 등을 보여주는 자리 -->
-  <div id="gate" class="gate" style="display:none;">
-    <div class="icon" id="gate-icon">🔒</div>
-    <h2 id="gate-title">확인 중…</h2>
-    <p id="gate-msg"></p>
-    <button class="btn-primary" id="gate-btn" style="display:none;"></button>
-  </div>
 
-  <!-- (2) 실제 앱 화면: 처음엔 숨겨두고, 로그인·권한 확인 후 보여줌 -->
-  <div id="app" style="display:none;">
-    <header>
-      <div class="brand">
-        <span class="dot"></span>
-        <h1>상품 마스터 <small>· 순수본 식품본부</small></h1>
-      </div>
-      <div class="who">
-        <span id="who-name"></span>
-        <span class="role-badge" id="who-role"></span>
-        <button class="btn-ghost btn-sm" id="btn-logout">로그아웃</button>
-      </div>
-    </header>
+<div id="gate" class="gate" style="display:none;">
+  <div class="icon" id="gate-icon">🔒</div>
+  <h2 id="gate-title">확인 중…</h2>
+  <p id="gate-msg"></p>
+  <button class="btn-primary" id="gate-btn" style="display:none;"></button>
+</div>
 
-    <main>
-      <div class="toolbar">
-        <input class="search" id="search" placeholder="ERP코드 또는 상품명으로 검색…" />
-        <label class="chk"><input type="checkbox" id="show-inactive" /> 비활성 포함</label>
-        <button class="btn-primary" id="btn-new" style="display:none;">+ 새 상품</button>
-      </div>
+<div id="app" style="display:none;">
+  <header>
+    <div class="brand"><span class="dot"></span><h1>상품 마스터 <small>· 순수본 식품본부</small></h1></div>
+    <div class="who">
+      <span id="who-name"></span>
+      <span class="role-badge" id="who-role"></span>
+      <button class="btn-ghost btn-sm" id="btn-logout">로그아웃</button>
+    </div>
+  </header>
 
-      <div class="card">
-        <table>
-          <thead>
-            <tr>
-              <th>ERP코드</th>
-              <th>상품명</th>
-              <th>품온</th>
-              <th class="num">박스입수</th>
-              <th class="num">상품원가</th>
-              <th class="num">정상가</th>
-              <th class="num">상시할인가</th>
-              <th class="num">최대할인가</th>
-              <th>상태</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody id="rows"></tbody>
-        </table>
-        <div class="empty" id="empty" style="display:none;">등록된 상품이 없어요.</div>
-      </div>
-    </main>
-  </div>
+  <main>
+    <div class="toolbar">
+      <input class="search" id="search" placeholder="ERP코드 또는 상품명으로 검색…" />
+      <label class="chk"><input type="checkbox" id="show-inactive" /> 비활성 포함</label>
+      <button class="btn-primary" id="btn-new" style="display:none;">+ 새 상품</button>
+    </div>
+    <div class="card">
+      <table>
+        <thead>
+          <tr>
+            <th>ERP코드</th>
+            <th>상품명</th>
+            <th>품온</th>
+            <th class="num">단량 (g)</th>
+            <th class="num">상품원가 (EA)</th>
+            <th class="num">정상가 (EA)</th>
+            <th>상태</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+      <div class="empty" id="empty" style="display:none;">등록된 상품이 없어요.</div>
+    </div>
+  </main>
+</div>
 
-  <!-- (3) 모달: 새 상품 추가 / 수정 입력창 -->
-  <div class="overlay" id="overlay">
-    <div class="modal">
-      <div class="modal-head" id="modal-title">새 상품</div>
-      <div class="modal-body">
-        <div class="field">
-          <label>ERP코드 <span class="req">*</span></label>
-          <input id="f-code" placeholder="예: P-0001" />
-        </div>
-        <div class="field">
-          <label>품온 <span class="req">*</span></label>
-          <select id="f-temp">
-            <option value="실온">실온</option>
-            <option value="냉장">냉장</option>
-            <option value="냉동">냉동</option>
-          </select>
-        </div>
-        <div class="field full">
-          <label>상품명 <span class="req">*</span></label>
-          <input id="f-name" placeholder="예: 순수본 약과 200g" />
-        </div>
-        <div class="field">
-          <label>박스입수량</label>
-          <input id="f-box" class="num" inputmode="numeric" placeholder="1" />
-        </div>
-        <div class="field">
-          <label>상품원가 (원)</label>
-          <input id="f-cost" class="num" inputmode="numeric" placeholder="0" />
-        </div>
-        <div class="field">
-          <label>정상가 (원, VAT포함)</label>
-          <input id="f-normal" class="num" inputmode="numeric" placeholder="0" />
-        </div>
-        <div class="field">
-          <label>상시할인가 (원, VAT포함)</label>
-          <input id="f-discount" class="num" inputmode="numeric" placeholder="0" />
-        </div>
-        <div class="field full">
-          <label>최대할인가 (원, VAT포함)</label>
-          <input id="f-maxdiscount" class="num" inputmode="numeric" placeholder="0" />
-        </div>
+<!-- 모달 -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <div class="modal-head" id="modal-title">새 상품</div>
+    <div class="modal-body">
+      <div class="field">
+        <label>ERP코드 <span class="req">*</span></label>
+        <input id="f-code" placeholder="예: A001" />
       </div>
-      <div class="modal-foot">
-        <button class="btn-ghost" id="btn-cancel">취소</button>
-        <button class="btn-primary" id="btn-save">저장</button>
+      <div class="field">
+        <label>품온 <span class="req">*</span></label>
+        <select id="f-temp">
+          <option value="실온">실온</option>
+          <option value="냉장">냉장</option>
+          <option value="냉동">냉동</option>
+        </select>
+      </div>
+      <div class="field full">
+        <label>상품명 <span class="req">*</span></label>
+        <input id="f-name" placeholder="예: 순수본 전복죽 500g" />
+      </div>
+      <div class="field">
+        <label>단량 (g)</label>
+        <input id="f-weight" class="num" inputmode="numeric" placeholder="0" />
+      </div>
+      <div class="field">
+        <label>상품원가 (원/EA, VAT별도)</label>
+        <input id="f-cost" class="num" inputmode="numeric" placeholder="0" />
+      </div>
+      <div class="field full">
+        <label>정상가 (원/EA, VAT포함)</label>
+        <input id="f-normal" class="num" inputmode="numeric" placeholder="0" />
+        <span class="hint">※ 입수량별 판매가격은 가격정책 페이지에서 설정합니다</span>
       </div>
     </div>
+    <div class="modal-foot">
+      <button class="btn-ghost" id="btn-cancel">취소</button>
+      <button class="btn-primary" id="btn-save">저장</button>
+    </div>
   </div>
+</div>
 
-  <script>
-    // =================================================================
-    //  0. Supabase 연결 정보  ★★★ 여기를 본인 값으로 바꿔주세요 ★★★
-    //  - index.html(로그인 페이지)에 이미 적어둔 것과 "똑같은" 값을 넣으면 됩니다.
-    //  - Supabase → Project Settings → API 에서 확인 가능
-    //    · Project URL  → SUPABASE_URL
-    //    · anon public 키 → SUPABASE_ANON_KEY
-    // =================================================================
-    const SUPABASE_URL = "https://ngvgzfhvjaowwhnmmpex.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ndmd6Zmh2amFvd3dobm1tcGV4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMzgyNjQsImV4cCI6MjA5NTYxNDI2NH0.jO5Ab8trHPyamHhYFXi9UWvQ217pDJW9qplBWph8cgg";
+<script>
+  const SUPABASE_URL = "https://ngvgzfhvjaowwhnmmpex.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ndmd6Zmh2amFvd3dobm1tcGV4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMzgyNjQsImV4cCI6MjA5NTYxNDI2NH0.jO5Ab8trHPyamHhYFXi9UWvQ217pDJW9qplBWph8cgg";
+  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // Supabase와 대화할 '연결 객체'를 만듭니다. 앞으로 sb.~ 로 호출해요.
-    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  let me = null, canEdit = false, products = [], editingId = null;
+  const $ = (id) => document.getElementById(id);
+  const comma = (n) => Number(n||0).toLocaleString("ko-KR");
+  const unComma = (v) => Number(String(v).replace(/[^\d]/g,""))||0;
 
-    // =================================================================
-    //  1. 화면 전체에서 같이 쓰는 상태 변수들
-    // =================================================================
-    let me = null;            // 로그인한 내 정보(users 표의 행)
-    let canEdit = false;      // master/admin 이면 true (추가·수정 가능)
-    let products = [];        // DB에서 불러온 상품 목록(메모리에 보관)
-    let editingId = null;     // 수정 중인 상품 id. null 이면 '새 상품 추가' 모드
+  async function init() {
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) return showGate("🔒","로그인이 필요해요","먼저 로그인해 주세요.","로그인하러 가기",goLogin);
+    const { data } = await sb.from("users").select("*").eq("id",session.user.id).single();
+    if (!data) return showGate("⚠️","사용자 정보를 찾을 수 없어요","관리자에게 문의해 주세요.","로그아웃",logout);
+    me = data;
+    if (me.role==="pending"||me.is_active===false) return showGate("⏳","승인 대기 중이에요","관리자 승인 후 이용 가능합니다.","로그아웃",logout);
+    canEdit = (me.role==="master"||me.role==="admin");
+    showApp();
+    await loadProducts();
+  }
 
-    // 자주 쓰는 요소를 미리 잡아둡니다(짧게 쓰려고).
-    const $ = (id) => document.getElementById(id);
+  function showGate(icon,title,msg,btnText,btnFn) {
+    $("app").style.display="none"; $("gate").style.display="block";
+    $("gate-icon").textContent=icon; $("gate-title").textContent=title; $("gate-msg").textContent=msg;
+    const b=$("gate-btn");
+    if(btnText){b.style.display="inline-block";b.textContent=btnText;b.onclick=btnFn;}
+    else b.style.display="none";
+  }
+  function showApp() {
+    $("gate").style.display="none"; $("app").style.display="block";
+    $("who-name").textContent=me.name||me.email||"사용자";
+    $("who-role").textContent=me.role;
+    $("btn-new").style.display=canEdit?"inline-block":"none";
+  }
+  function goLogin(){location.href="index.html";}
+  async function logout(){await sb.auth.signOut();goLogin();}
 
-    // 숫자를 1,000 처럼 콤마 붙여 보여주는 함수
-    const comma = (n) => Number(n || 0).toLocaleString("ko-KR");
-    // 콤마 섞인 글자에서 순수 숫자만 뽑아내는 함수 ("12,000" → 12000)
-    const unComma = (v) => Number(String(v).replace(/[^\d]/g, "")) || 0;
+  async function loadProducts() {
+    const { data,error } = await sb.from("products").select("*").order("code",{ascending:true});
+    if (error){alert("불러오기 실패: "+error.message);return;}
+    products = data||[];
+    renderTable();
+  }
 
-    // =================================================================
-    //  2. 페이지가 열리면 가장 먼저 실행 (로그인·권한 확인)
-    // =================================================================
-    async function init() {
-      // (a) 현재 로그인 세션이 있는지 확인
-      const { data: { session } } = await sb.auth.getSession();
-      if (!session) {
-        return showGate("🔒", "로그인이 필요해요", "먼저 로그인 페이지에서 로그인해 주세요.", "로그인하러 가기", goLogin);
-      }
-
-      // (b) users 표에서 '나'의 정보(이름·역할·활성여부)를 가져옴
-      const { data, error } = await sb.from("users").select("*").eq("id", session.user.id).single();
-      if (error || !data) {
-        return showGate("⚠️", "사용자 정보를 찾을 수 없어요", "관리자에게 계정 등록을 요청해 주세요.", "로그아웃", logout);
-      }
-      me = data;
-
-      // (c) 승인 대기(pending)거나 비활성이면 막기
-      if (me.role === "pending" || me.is_active === false) {
-        return showGate("⏳", "승인 대기 중이에요", "관리자가 승인하면 사용할 수 있어요.", "로그아웃", logout);
-      }
-
-      // (d) 통과! master/admin 이면 편집 권한 ON
-      canEdit = (me.role === "master" || me.role === "admin");
-
-      showApp();          // 앱 화면 보이기
-      await loadProducts(); // 상품 목록 불러오기
-    }
-
-    // =================================================================
-    //  3. 게이트(안내) 화면 / 앱 화면 전환
-    // =================================================================
-    function showGate(icon, title, msg, btnText, btnFn) {
-      $("app").style.display = "none";
-      $("gate").style.display = "block";
-      $("gate-icon").textContent = icon;
-      $("gate-title").textContent = title;
-      $("gate-msg").textContent = msg;
-      const b = $("gate-btn");
-      if (btnText) { b.style.display = "inline-block"; b.textContent = btnText; b.onclick = btnFn; }
-      else { b.style.display = "none"; }
-    }
-
-    function showApp() {
-      $("gate").style.display = "none";
-      $("app").style.display = "block";
-      $("who-name").textContent = me.name || me.email || "사용자";
-      $("who-role").textContent = me.role;
-      // 편집 권한이 있을 때만 '+ 새 상품' 버튼을 보여줌
-      $("btn-new").style.display = canEdit ? "inline-block" : "none";
-    }
-
-    function goLogin() { location.href = "index.html"; }
-    async function logout() { await sb.auth.signOut(); goLogin(); }
-
-    // =================================================================
-    //  4. 상품 목록 불러오기 (DB → 메모리 → 화면)
-    // =================================================================
-    async function loadProducts() {
-      // products 표에서 모든 행을, code 순서로 가져옴
-      const { data, error } = await sb.from("products").select("*").order("code", { ascending: true });
-      if (error) { alert("상품을 불러오지 못했어요: " + error.message); return; }
-      products = data || [];
-      renderTable();
-    }
-
-    // =================================================================
-    //  5. 표 그리기 (검색어·비활성 필터 적용)
-    // =================================================================
-    function renderTable() {
-      const keyword = $("search").value.trim().toLowerCase();
-      const includeInactive = $("show-inactive").checked;
-
-      // 화면에 보여줄 목록만 추려냄
-      const list = products.filter((p) => {
-        if (!includeInactive && p.is_active === false) return false; // 비활성 숨김
-        if (!keyword) return true;
-        return (p.code || "").toLowerCase().includes(keyword)
-            || (p.name || "").toLowerCase().includes(keyword);
-      });
-
-      const tbody = $("rows");
-      tbody.innerHTML = "";
-      $("empty").style.display = list.length ? "none" : "block";
-
-      list.forEach((p) => {
-        const tr = document.createElement("tr");
-        if (p.is_active === false) tr.className = "inactive";
-        tr.innerHTML = `
-          <td class="code">${escapeHtml(p.code)}</td>
-          <td>${escapeHtml(p.name)}</td>
-          <td><span class="temp-tag">${escapeHtml(p.temperature)}</span></td>
-          <td class="num">${comma(p.box_qty)}</td>
-          <td class="num">${comma(p.cost)}</td>
-          <td class="num">${comma(p.normal_price)}</td>
-          <td class="num">${comma(p.discount_price)}</td>
-          <td class="num">${comma(p.max_discount_price)}</td>
-          <td>${p.is_active === false
-              ? '<span class="status-off">비활성</span>'
-              : '<span class="status-on">활성</span>'}</td>
-          <td></td>`;
-
-        // 편집 권한이 있을 때만 '수정 / 활성토글' 버튼을 붙임
-        if (canEdit) {
-          const cell = tr.lastElementChild;
-          const edit = document.createElement("button");
-          edit.className = "btn-ghost btn-sm";
-          edit.textContent = "수정";
-          edit.onclick = () => openModal(p);
-          cell.appendChild(edit);
-
-          const toggle = document.createElement("button");
-          toggle.className = "btn-ghost btn-sm";
-          toggle.style.marginLeft = "6px";
-          toggle.textContent = p.is_active === false ? "활성화" : "비활성";
-          toggle.onclick = () => toggleActive(p);
-          cell.appendChild(toggle);
-        }
-        tbody.appendChild(tr);
-      });
-    }
-
-    // 화면에 글자를 넣을 때 깨짐/오류를 막는 안전장치
-    function escapeHtml(s) {
-      return String(s ?? "").replace(/[&<>"']/g, (c) =>
-        ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-    }
-
-    // =================================================================
-    //  6. 모달 열기 (새 상품 / 수정)
-    // =================================================================
-    function openModal(product) {
-      editingId = product ? product.id : null; // 상품을 넘겨받으면 수정, 아니면 새로 추가
-      $("modal-title").textContent = product ? "상품 수정" : "새 상품";
-
-      // 입력칸 채우기 (수정이면 기존 값, 새 상품이면 빈/기본값)
-      $("f-code").value = product ? product.code : "";
-      $("f-name").value = product ? product.name : "";
-      $("f-temp").value = product ? product.temperature : "실온";
-      $("f-box").value = product ? comma(product.box_qty) : "1";
-      $("f-cost").value = product ? comma(product.cost) : "";
-      $("f-normal").value = product ? comma(product.normal_price) : "";
-      $("f-discount").value = product ? comma(product.discount_price) : "";
-      $("f-maxdiscount").value = product ? comma(product.max_discount_price) : "";
-
-      // ERP코드는 수정 모드에서 잠금(식별값이라 함부로 바꾸지 않도록)
-      $("f-code").disabled = !!product;
-
-      $("overlay").classList.add("show");
-    }
-    function closeModal() { $("overlay").classList.remove("show"); }
-
-    // =================================================================
-    //  7. 저장하기 (추가 = insert / 수정 = update)
-    // =================================================================
-    async function saveProduct() {
-      // 입력값 모으기
-      const payload = {
-        code: $("f-code").value.trim(),
-        name: $("f-name").value.trim(),
-        temperature: $("f-temp").value,
-        box_qty: unComma($("f-box").value) || 1,
-        cost: unComma($("f-cost").value),
-        normal_price: unComma($("f-normal").value),
-        discount_price: unComma($("f-discount").value),
-        max_discount_price: unComma($("f-maxdiscount").value),
-        updated_by: me.id,
-        updated_at: new Date().toISOString(),
-      };
-
-      // 필수값 확인 (DB가 거부하기 전에 친절히 안내)
-      if (!payload.code || !payload.name || !payload.temperature) {
-        alert("ERP코드 · 상품명 · 품온은 꼭 입력해야 해요.");
-        return;
-      }
-
-      let error;
-      if (editingId === null) {
-        // --- 새 상품 추가 ---
-        // 같은 ERP코드가 이미 있는지 미리 확인
-        if (products.some((p) => p.code === payload.code)) {
-          alert("이미 같은 ERP코드의 상품이 있어요. 다른 코드를 사용해 주세요.");
-          return;
-        }
-        payload.created_by = me.id; // 처음 만든 사람도 기록
-        ({ error } = await sb.from("products").insert(payload));
-      } else {
-        // --- 기존 상품 수정 ---
-        ({ error } = await sb.from("products").update(payload).eq("id", editingId));
-      }
-
-      if (error) { alert("저장 실패: " + error.message); return; }
-
-      closeModal();
-      await loadProducts(); // 저장 후 목록 새로고침
-    }
-
-    // =================================================================
-    //  8. 활성 / 비활성 토글 (완전삭제 대신 숨김 처리)
-    // =================================================================
-    async function toggleActive(p) {
-      const next = !(p.is_active !== false); // 현재 활성이면 false, 비활성이면 true
-      const word = next ? "활성화" : "비활성";
-      if (!confirm(`'${p.name}' 상품을 ${word} 할까요?`)) return;
-
-      const { error } = await sb.from("products")
-        .update({ is_active: next, updated_by: me.id, updated_at: new Date().toISOString() })
-        .eq("id", p.id);
-
-      if (error) { alert("처리 실패: " + error.message); return; }
-      await loadProducts();
-    }
-
-    // =================================================================
-    //  9. 버튼·입력칸에 동작 연결 + 시작
-    // =================================================================
-    // 가격/원가/입수 칸에 콤마 자동 표시
-    ["f-box", "f-cost", "f-normal", "f-discount", "f-maxdiscount"].forEach((id) => {
-      $(id).addEventListener("input", (e) => {
-        const digits = e.target.value.replace(/[^\d]/g, "");
-        e.target.value = digits ? Number(digits).toLocaleString("ko-KR") : "";
-      });
+  function renderTable() {
+    const keyword=$("search").value.trim().toLowerCase();
+    const includeInactive=$("show-inactive").checked;
+    const list=products.filter(p=>{
+      if(!includeInactive&&p.is_active===false) return false;
+      if(!keyword) return true;
+      return (p.code||"").toLowerCase().includes(keyword)||(p.name||"").toLowerCase().includes(keyword);
     });
+    const tbody=$("rows");
+    tbody.innerHTML="";
+    $("empty").style.display=list.length?"none":"block";
+    list.forEach(p=>{
+      const tr=document.createElement("tr");
+      if(p.is_active===false) tr.className="inactive";
+      tr.innerHTML=`
+        <td class="code">${esc(p.code)}</td>
+        <td>${esc(p.name)}</td>
+        <td><span class="temp-tag">${esc(p.temperature)}</span></td>
+        <td class="num">${comma(p.unit_weight)}</td>
+        <td class="num">${comma(p.unit_cost)}</td>
+        <td class="num">${comma(p.normal_price)}</td>
+        <td>${p.is_active===false?'<span class="status-off">비활성</span>':'<span class="status-on">활성</span>'}</td>
+        <td></td>`;
+      if(canEdit){
+        const cell=tr.lastElementChild;
+        const edit=document.createElement("button");
+        edit.className="btn-ghost btn-sm"; edit.textContent="수정";
+        edit.onclick=()=>openModal(p); cell.appendChild(edit);
+        const tog=document.createElement("button");
+        tog.className="btn-ghost btn-sm"; tog.style.marginLeft="6px";
+        tog.textContent=p.is_active===false?"활성화":"비활성";
+        tog.onclick=()=>toggleActive(p); cell.appendChild(tog);
+      }
+      tbody.appendChild(tr);
+    });
+  }
 
-    $("btn-new").onclick = () => openModal(null);
-    $("btn-cancel").onclick = closeModal;
-    $("btn-save").onclick = saveProduct;
-    $("btn-logout").onclick = logout;
-    $("search").addEventListener("input", renderTable);
-    $("show-inactive").addEventListener("change", renderTable);
-    // 모달 바깥(어두운 부분)을 누르면 닫기
-    $("overlay").addEventListener("click", (e) => { if (e.target.id === "overlay") closeModal(); });
+  function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 
-    // 페이지 시작!
-    init();
-  </script>
+  function openModal(p) {
+    editingId=p?p.id:null;
+    $("modal-title").textContent=p?"상품 수정":"새 상품";
+    $("f-code").value=p?p.code:""; $("f-code").disabled=!!p;
+    $("f-name").value=p?p.name:"";
+    $("f-temp").value=p?p.temperature:"실온";
+    $("f-weight").value=p?comma(p.unit_weight):"";
+    $("f-cost").value=p?comma(p.unit_cost):"";
+    $("f-normal").value=p?comma(p.normal_price):"";
+    $("overlay").classList.add("show");
+  }
+  function closeModal(){$("overlay").classList.remove("show");}
+
+  async function saveProduct() {
+    const payload={
+      code:$("f-code").value.trim(),
+      name:$("f-name").value.trim(),
+      temperature:$("f-temp").value,
+      unit_weight:unComma($("f-weight").value),
+      unit_cost:unComma($("f-cost").value),
+      normal_price:unComma($("f-normal").value),
+      updated_by:me.id,
+      updated_at:new Date().toISOString(),
+    };
+    if(!payload.code||!payload.name||!payload.temperature){alert("ERP코드·상품명·품온은 필수입니다.");return;}
+    let error;
+    if(editingId===null){
+      if(products.some(p=>p.code===payload.code)){alert("이미 같은 ERP코드가 있어요.");return;}
+      payload.created_by=me.id;
+      ({error}=await sb.from("products").insert(payload));
+    } else {
+      ({error}=await sb.from("products").update(payload).eq("id",editingId));
+    }
+    if(error){alert("저장 실패: "+error.message);return;}
+    closeModal();
+    await loadProducts();
+  }
+
+  async function toggleActive(p) {
+    const next=!(p.is_active!==false);
+    if(!confirm(`'${p.name}' 상품을 ${next?"활성화":"비활성"} 할까요?`)) return;
+    const {error}=await sb.from("products").update({is_active:next,updated_by:me.id,updated_at:new Date().toISOString()}).eq("id",p.id);
+    if(error){alert("처리 실패: "+error.message);return;}
+    await loadProducts();
+  }
+
+  ["f-weight","f-cost","f-normal"].forEach(id=>{
+    $(id).addEventListener("input",e=>{
+      const d=e.target.value.replace(/[^\d]/g,"");
+      e.target.value=d?Number(d).toLocaleString("ko-KR"):"";
+    });
+  });
+
+  $("btn-new").onclick=()=>openModal(null);
+  $("btn-cancel").onclick=closeModal;
+  $("btn-save").onclick=saveProduct;
+  $("btn-logout").onclick=logout;
+  $("search").addEventListener("input",renderTable);
+  $("show-inactive").addEventListener("change",renderTable);
+  $("overlay").addEventListener("click",e=>{if(e.target.id==="overlay")closeModal();});
+
+  init();
+</script>
 </body>
 </html>
