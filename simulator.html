@@ -314,8 +314,11 @@
   <div class="right-col">
 
     <div class="card">
-      <div class="card-title">📋 입수량별 가격 설정
-        <span style="font-size:11px;font-weight:400;color:var(--muted);margin-left:6px;">가격정책 데이터 있으면 자동 로드 · 직접 수정 가능</span>
+      <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;">
+        <span>📋 입수량별 가격 설정
+          <span style="font-size:11px;font-weight:400;color:var(--muted);margin-left:6px;">가격정책 데이터 있으면 자동 로드 · 직접 수정 가능</span>
+        </span>
+        <button class="btn-load" id="btn-load" style="flex-shrink:0;">📂 시나리오 불러오기</button>
       </div>
       <div class="unit-table-wrap">
         <table class="unit-table">
@@ -376,7 +379,6 @@
       <div class="action-bar" id="action-bar" style="display:none;">
         <button class="btn-primary" id="btn-apply" style="display:none;">가격정책에 반영</button>
         <button class="btn-scenario" id="btn-scenario">내 시나리오 저장</button>
-        <button class="btn-load" id="btn-load">📂 시나리오 불러오기</button>
         <span class="flash-msg" id="flash-msg"></span>
       </div>
     </div>
