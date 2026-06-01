@@ -223,37 +223,23 @@
       <!-- 직납 전용: 품온별 운반비율 · 유통사이익율 -->
       <div class="direct-section" id="direct-section">
         <div class="sec-title">직납 채널 — 품온별 운반비율 · 유통사이익율</div>
-        <table class="dtable">
-          <colgroup>
-            <col style="width:60px;">
-            <col>
-            <col>
-          </colgroup>
-          <thead>
-            <tr>
-              <th>품온</th>
-              <th>운반비율 (%)</th>
-              <th>유통사이익율 (%)</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>실온</td>
-              <td><input type="number" id="d-fr-amb" step="any" placeholder="0" /></td>
-              <td><input type="number" id="d-dr-amb" step="any" placeholder="0" /></td>
-            </tr>
-            <tr>
-              <td>냉장</td>
-              <td><input type="number" id="d-fr-chi" step="any" placeholder="0" /></td>
-              <td><input type="number" id="d-dr-chi" step="any" placeholder="0" /></td>
-            </tr>
-            <tr>
-              <td>냉동</td>
-              <td><input type="number" id="d-fr-fro" step="any" placeholder="0" /></td>
-              <td><input type="number" id="d-dr-fro" step="any" placeholder="0" /></td>
-            </tr>
-          </tbody>
-        </table>
+        <div style="display:grid;grid-template-columns:60px 1fr 1fr;gap:0;border:1px solid var(--line);border-radius:9px;overflow:hidden;">
+          <div style="background:#fafbfa;padding:8px 10px;font-size:12px;font-weight:600;color:var(--muted);border-bottom:1px solid var(--line);">품온</div>
+          <div style="background:#fafbfa;padding:8px 10px;font-size:12px;font-weight:600;color:var(--muted);border-bottom:1px solid var(--line);border-left:1px solid var(--line);text-align:center;">운반비율 (%)</div>
+          <div style="background:#fafbfa;padding:8px 10px;font-size:12px;font-weight:600;color:var(--muted);border-bottom:1px solid var(--line);border-left:1px solid var(--line);text-align:center;">유통사이익율 (%)</div>
+          <!-- 실온 -->
+          <div style="padding:8px 10px;font-size:13px;font-weight:600;border-bottom:1px solid var(--line);">실온</div>
+          <div style="padding:6px 8px;border-bottom:1px solid var(--line);border-left:1px solid var(--line);"><input type="number" id="d-fr-amb" step="any" placeholder="0" style="width:100%;font-family:inherit;font-size:13px;padding:6px 8px;border:1px solid var(--line);border-radius:7px;text-align:right;box-sizing:border-box;" /></div>
+          <div style="padding:6px 8px;border-bottom:1px solid var(--line);border-left:1px solid var(--line);"><input type="number" id="d-dr-amb" step="any" placeholder="0" style="width:100%;font-family:inherit;font-size:13px;padding:6px 8px;border:1px solid var(--line);border-radius:7px;text-align:right;box-sizing:border-box;" /></div>
+          <!-- 냉장 -->
+          <div style="padding:8px 10px;font-size:13px;font-weight:600;border-bottom:1px solid var(--line);">냉장</div>
+          <div style="padding:6px 8px;border-bottom:1px solid var(--line);border-left:1px solid var(--line);"><input type="number" id="d-fr-chi" step="any" placeholder="0" style="width:100%;font-family:inherit;font-size:13px;padding:6px 8px;border:1px solid var(--line);border-radius:7px;text-align:right;box-sizing:border-box;" /></div>
+          <div style="padding:6px 8px;border-bottom:1px solid var(--line);border-left:1px solid var(--line);"><input type="number" id="d-dr-chi" step="any" placeholder="0" style="width:100%;font-family:inherit;font-size:13px;padding:6px 8px;border:1px solid var(--line);border-radius:7px;text-align:right;box-sizing:border-box;" /></div>
+          <!-- 냉동 -->
+          <div style="padding:8px 10px;font-size:13px;font-weight:600;">냉동</div>
+          <div style="padding:6px 8px;border-left:1px solid var(--line);"><input type="number" id="d-fr-fro" step="any" placeholder="0" style="width:100%;font-family:inherit;font-size:13px;padding:6px 8px;border:1px solid var(--line);border-radius:7px;text-align:right;box-sizing:border-box;" /></div>
+          <div style="padding:6px 8px;border-left:1px solid var(--line);"><input type="number" id="d-dr-fro" step="any" placeholder="0" style="width:100%;font-family:inherit;font-size:13px;padding:6px 8px;border:1px solid var(--line);border-radius:7px;text-align:right;box-sizing:border-box;" /></div>
+        </div>
         <p class="direct-hint">※ 운반비마스터와 연동됩니다. 여기서 수정하면 운반비마스터에도 반영됩니다.</p>
       </div>
 
