@@ -398,9 +398,9 @@
   const comma = n => Number(n||0).toLocaleString('ko-KR');
   const numV = id => parseFloat($(id).value)||0;
 
-  $('logoutBtn').addEventListener('click', async()=>{ await sb.auth.signOut(); location.href='./index.html'; });
+   location.href='./index.html'; });
   $('gateBtn').addEventListener('click',   async()=>{ await sb.auth.signOut(); location.href='./index.html'; });
-  $('adminBtn').addEventListener('click',  ()=>{ location.href='./admin.html'; });
+   });
 
   (async function guard(){
     const { data:{ session } } = await sb.auth.getSession();
@@ -410,9 +410,9 @@
     if (p && p.is_active && p.role!=='pending'){
       me = p; canEdit = (p.role==='master'||p.role==='admin');
       $('authGate').style.display='none'; $('app').style.display='block';
-      $('logoutBtn').style.display='inline-block';
+      
       $('who-info').textContent = (p.name||p.email||'')+(p.role?' · '+p.role:'');
-      if(p.role==='admin') $('adminBtn').style.display='inline-block';
+      if(p.role==='admin') 
       if(canEdit) $('btn-apply').style.display='inline-block';
       await loadAllMasters();
     } else {
