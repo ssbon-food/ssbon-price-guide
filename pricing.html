@@ -295,26 +295,39 @@
       unitsMap[u.product_id].push(u);
     });
 
+    // sticky 컬럼: 상품명 220px, 품온 50px → 총 270px에서 다음 컬럼 시작
+    const PROD_W = 220, TEMP_W = 50;
     let html = `<table class="policy-table"><thead>
       <tr>
-        <th class="left sticky-col" rowspan="2" style="min-width:200px;border-right:1px solid var(--line);">상품 / 입수량</th>
-        <th rowspan="2" style="width:50px;border-right:2px solid var(--line);position:sticky;left:200px;z-index:4;background:#fafbfa;">품온</th>`;
+        <th class="left sticky-col" rowspan="3" style="min-width:${PROD_W}px;border-right:1px solid var(--line);vertical-align:middle;">상품 / 입수량</th>
+        <th rowspan="3" style="width:${TEMP_W}px;border-right:1px solid var(--line);position:sticky;left:${PROD_W}px;z-index:4;background:#fafbfa;vertical-align:middle;">품온</th>
+        <th rowspan="3" style="width:80px;border-right:2px solid var(--line);position:sticky;left:${PROD_W+TEMP_W}px;z-index:4;background:#fafbfa;vertical-align:middle;font-size:11px;">원가<br><span style="font-weight:400;">(EA)</span></th>`;
 
-    // 채널별 헤더 - 가격 3종 × (EA단가+총판매가+이익률) = 9컬럼씩
+    // 채널별 헤더 1행: 채널명, 10컬럼씩 (원가제외, 정상3+상시3+최대3+이익1)
     channels.forEach(c=>{
-      html += `<th colspan="9" class="group" style="border-right:2px solid var(--line);">${esc(c.name)}<br><span style="font-weight:400;font-size:11px;color:var(--muted);">${c.channel_type==='direct'?'직납':'위탁'}</span></th>`;
+      html += `<th colspan="9" class="group" style="border-right:2px solid var(--line);">${esc(c.name)}<span style="font-weight:400;font-size:11px;color:var(--muted);margin-left:6px;">${c.channel_type==='direct'?'직납':'위탁'}</span></th>`;
     });
     html += `</tr><tr>`;
 
+    // 헤더 2행: 정상/상시/최대 그룹 (각 3컬럼)
     channels.forEach(c=>{
-      ['정상판매가','상시할인가','최대할인가'].forEach((label,i)=>{
-        const borderL = i===0 ? 'border-left:2px solid var(--line);' : 'border-left:1px solid var(--line);';
-        const borderR = i===2 ? 'border-right:2px solid var(--line);' : '';
-        const bg = i===0 ? 'background:#f0f7f2;' : i===1 ? 'background:#f0f4f9;' : 'background:#fdf0f0;';
-        html += `<th style="${borderL}${bg}font-size:10.5px;">개당가 (원)</th>
-                 <th style="${bg}font-size:10.5px;">판매가 (원)</th>
-                 <th style="${borderR}${bg}font-size:10.5px;">이익률</th>`;
-      });
+      html += `<th colspan="3" style="border-left:2px solid var(--line);background:#f0f7f2;font-size:11px;color:#2f7d4f;border-bottom:1px solid #b8dfc8;">정상판매가</th>`;
+      html += `<th colspan="3" style="border-left:1px solid var(--line);background:#f0f4f9;font-size:11px;color:#1a5fa8;border-bottom:1px solid #b8cfe0;">상시할인가</th>`;
+      html += `<th colspan="3" style="border-left:1px solid var(--line);border-right:2px solid var(--line);background:#fdf0f0;font-size:11px;color:#b4452f;border-bottom:1px solid #e0c0b8;">최대할인가</th>`;
+    });
+    html += `</tr><tr>`;
+
+    // 헤더 3행: 개당가/판매가/이익률
+    channels.forEach(c=>{
+      html += `<th style="border-left:2px solid var(--line);background:#f0f7f2;font-size:10.5px;">개당가</th>
+               <th style="background:#f0f7f2;font-size:10.5px;">판매가</th>
+               <th style="background:#f0f7f2;font-size:10.5px;">이익률</th>`;
+      html += `<th style="border-left:1px solid var(--line);background:#f0f4f9;font-size:10.5px;">개당가</th>
+               <th style="background:#f0f4f9;font-size:10.5px;">판매가</th>
+               <th style="background:#f0f4f9;font-size:10.5px;">이익률</th>`;
+      html += `<th style="border-left:1px solid var(--line);background:#fdf0f0;font-size:10.5px;">개당가</th>
+               <th style="background:#fdf0f0;font-size:10.5px;">판매가</th>
+               <th style="border-right:2px solid var(--line);background:#fdf0f0;font-size:10.5px;">이익률</th>`;
     });
     html += `</tr></thead><tbody>`;
 
@@ -325,15 +338,16 @@
       html += `<tr class="product-header">
         <td class="left sticky-col" style="border-right:1px solid var(--line);">
           <strong>${esc(prod.code||'')} ${esc(prod.name)}</strong>
-          <span style="font-size:11px;color:var(--muted);margin-left:6px;">EA원가 ${comma(prod.unit_cost)}원</span>
         </td>
-        <td class="center" style="position:sticky;left:200px;z-index:2;background:#f0f7f2;border-right:2px solid var(--line);">${prod.temperature}</td>`;
-      channels.forEach(()=>{ html += `<td colspan="9" style="border-right:2px solid var(--line);"></td>`; });
+        <td class="center" style="position:sticky;left:220px;z-index:2;background:#f0f7f2;border-right:1px solid var(--line);">${prod.temperature}</td>
+        <td style="position:sticky;left:270px;z-index:2;background:#f0f7f2;border-right:2px solid var(--line);text-align:right;font-size:12px;color:var(--muted);"></td>`;
+      channels.forEach(()=>{ html += `<td colspan="9" style="border-right:2px solid var(--line);background:#f0f7f2;"></td>`; });
       html += `</tr>`;
 
       if(units.length===0){
         html += `<tr class="no-data"><td class="sticky-col" style="border-right:1px solid var(--line);padding-left:20px;color:var(--muted);font-style:italic;text-align:left;">가격정책 미등록</td>
-          <td style="position:sticky;left:200px;z-index:2;background:var(--panel);border-right:2px solid var(--line);"></td>`;
+          <td style="position:sticky;left:220px;z-index:2;background:var(--panel);border-right:1px solid var(--line);"></td>
+          <td style="position:sticky;left:270px;z-index:2;background:var(--panel);border-right:2px solid var(--line);"></td>`;
         channels.forEach(()=>{ html += `<td colspan="9" style="border-right:2px solid var(--line);text-align:center;color:var(--muted);">-</td>`; });
         html += `</tr>`;
       } else {
@@ -346,9 +360,9 @@
           html += `<tr>
             <td class="left sticky-col" style="padding-left:20px;border-right:1px solid var(--line);">
               ${qty}개입
-              <span style="font-size:11px;color:var(--muted);margin-left:4px;">원가 ${comma((prod.unit_cost||0)*qty)}원</span>
             </td>
-            <td class="center" style="position:sticky;left:200px;z-index:2;background:var(--panel);border-right:2px solid var(--line);">${prod.temperature}</td>`;
+            <td class="center" style="position:sticky;left:220px;z-index:2;background:var(--panel);border-right:1px solid var(--line);">${prod.temperature}</td>
+            <td style="position:sticky;left:270px;z-index:2;background:var(--panel);border-right:2px solid var(--line);text-align:right;font-size:12px;color:var(--muted);">${comma((prod.unit_cost||0)*qty)}원</td>`;
 
           channels.forEach((ch,ci)=>{
             const rn = calcProfit(unit.normal_price, qty, prod, ch);
@@ -357,16 +371,16 @@
             const borderR = 'border-right:2px solid var(--line);';
 
             // 정상판매가
-            html += `<td style="border-left:2px solid var(--line);background:#fafdf9;">${eaNp?comma(eaNp)+'원':'-'}</td>
-                     <td style="background:#fafdf9;">${unit.normal_price?comma(unit.normal_price)+'원':'-'}</td>
+            html += `<td style="border-left:2px solid var(--line);background:#fafdf9;">${eaNp?comma(eaNp):'-'}</td>
+                     <td style="background:#fafdf9;">${unit.normal_price?comma(unit.normal_price):'-'}</td>
                      <td style="background:#fafdf9;">${rn?badge(rn.opRate):'-'}</td>`;
             // 상시할인가
-            html += `<td style="border-left:1px solid var(--line);background:#f7f9fd;">${eaAp?comma(eaAp)+'원':'-'}</td>
-                     <td style="background:#f7f9fd;">${unit.always_price?comma(unit.always_price)+'원':'-'}</td>
+            html += `<td style="border-left:1px solid var(--line);background:#f7f9fd;">${eaAp?comma(eaAp):'-'}</td>
+                     <td style="background:#f7f9fd;">${unit.always_price?comma(unit.always_price):'-'}</td>
                      <td style="background:#f7f9fd;">${ra?badge(ra.opRate):'-'}</td>`;
             // 최대할인가
-            html += `<td style="border-left:1px solid var(--line);background:#fdf9f9;">${eaMp?comma(eaMp)+'원':'-'}</td>
-                     <td style="background:#fdf9f9;">${unit.max_price?comma(unit.max_price)+'원':'-'}</td>
+            html += `<td style="border-left:1px solid var(--line);background:#fdf9f9;">${eaMp?comma(eaMp):'-'}</td>
+                     <td style="background:#fdf9f9;">${unit.max_price?comma(unit.max_price):'-'}</td>
                      <td style="${borderR}background:#fdf9f9;">${rm?badge(rm.opRate):'-'}</td>`;
           });
           html += `</tr>`;
