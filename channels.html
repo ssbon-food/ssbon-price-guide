@@ -37,9 +37,10 @@
     .btn-ghost{background:var(--panel);color:var(--ink);border:1px solid var(--line);} .btn-ghost:hover{background:#f0f3f0;}
     .btn-sm{padding:6px 12px;font-size:13px;}
     .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow-x:auto;}
-    table{width:100%;border-collapse:collapse;min-width:920px;}
+    table{width:100%;border-collapse:collapse;min-width:1000px;}
     thead th{text-align:left;font-size:12.5px;color:var(--muted);font-weight:600;padding:12px 12px;border-bottom:1px solid var(--line);white-space:nowrap;background:#fafbfa;}
     th.num,td.num{text-align:right;}
+    th.ctr,td.ctr{text-align:center;}
     tbody td{padding:13px 12px;border-bottom:1px solid var(--line);font-size:14px;white-space:nowrap;}
     tbody tr:last-child td{border-bottom:none;}
     tbody tr:hover{background:#f7faf8;}
@@ -51,6 +52,7 @@
     .sub{color:var(--muted);font-size:12px;}
     .status-on{color:var(--accent);font-weight:600;font-size:13px;}
     .status-off{color:var(--warn);font-weight:600;font-size:13px;}
+    .dist-rate-cell{color:var(--accent);font-weight:600;}
     .empty{padding:48px 20px;text-align:center;color:var(--muted);}
     .gate{max-width:420px;margin:80px auto;text-align:center;padding:0 20px;}
     .gate .icon{font-size:40px;} .gate h2{margin:14px 0 8px;} .gate p{color:var(--muted);margin:0 0 20px;}
@@ -68,9 +70,9 @@
     .field input,.field select{font-family:inherit;font-size:14px;padding:10px 12px;border:1px solid var(--line);border-radius:9px;background:#fff;color:var(--ink);}
     .field input:focus,.field select:focus{outline:none;border-color:var(--accent);}
     .field input.num{text-align:right;}
-    .combo{display:flex;gap:8px;}
-    .combo select{flex:0 0 96px;}
-    .combo input{flex:1;}
+    .combo{display:flex;gap:8px;min-width:0;}
+    .combo select{flex:0 0 88px;min-width:0;}
+    .combo input{flex:1;min-width:0;}
     .subhead{grid-column:1/-1;font-size:12px;font-weight:700;color:var(--accent);letter-spacing:.03em;margin-top:4px;border-top:1px solid var(--line);padding-top:14px;}
     .modal-foot{padding:16px 24px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:10px;}
 
@@ -78,19 +80,7 @@
     .direct-section{grid-column:1/-1;display:none;overflow:hidden;}
     .direct-section.show{display:block;}
     .direct-section .sec-title{font-size:12px;font-weight:700;color:var(--accent);letter-spacing:.03em;margin-bottom:10px;padding-top:14px;border-top:1px solid var(--line);}
-    .dtable{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed;box-sizing:border-box;}
-    .dtable th{padding:8px 10px;font-size:12px;color:var(--muted);font-weight:600;border-bottom:1px solid var(--line);background:#fafbfa;text-align:center;}
-    .dtable th:first-child{text-align:left;width:60px;}
-    .dtable td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:center;}
-    .dtable td:first-child{text-align:left;font-weight:600;font-size:13px;}
-    .dtable tr:last-child td{border-bottom:none;}
-    .dtable input{width:100%;font-family:inherit;font-size:13px;padding:6px 8px;border:1px solid var(--line);border-radius:7px;background:#fff;text-align:right;min-width:0;box-sizing:border-box;}
-    .dtable input:focus{outline:none;border-color:var(--accent);}
     .direct-hint{font-size:11px;color:var(--muted);margin-top:6px;}
-    /* combo 오버플로우 방지 */
-    .combo{display:flex;gap:8px;min-width:0;}
-    .combo select{flex:0 0 88px;min-width:0;}
-    .combo input{flex:1;min-width:0;}
   </style>
 </head>
 <body>
@@ -145,7 +135,9 @@
             <th>채널명</th><th>유형</th><th>지급수수료</th>
             <th class="num">광고선전비</th><th class="num">판매촉진비</th>
             <th class="num">본부공통비</th><th class="num">부문공통비</th>
-            <th class="num">기타고정비</th><th>상태</th><th></th>
+            <th class="num">기타고정비</th>
+            <th class="ctr">유통사이익율<br><span style="font-size:11px;font-weight:400;">(직납만)</span></th>
+            <th>상태</th><th></th>
           </tr>
         </thead>
         <tbody id="rows"></tbody>
@@ -160,7 +152,6 @@
   <div class="modal">
     <div class="modal-head" id="modal-title">새 채널</div>
     <div class="modal-body">
-
       <div class="field full">
         <label>채널명 <span class="req">*</span></label>
         <input id="f-name" placeholder="예: 쿠팡 로켓배송" />
@@ -242,7 +233,6 @@
         </div>
         <p class="direct-hint">※ 운반비마스터와 연동됩니다. 여기서 수정하면 운반비마스터에도 반영됩니다.</p>
       </div>
-
     </div>
     <div class="modal-foot">
       <button class="btn-ghost" id="btn-cancel">취소</button>
@@ -256,12 +246,7 @@
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ndmd6Zmh2amFvd3dobm1tcGV4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMzgyNjQsImV4cCI6MjA5NTYxNDI2NH0.jO5Ab8trHPyamHhYFXi9UWvQ217pDJW9qplBWph8cgg";
   const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  const TEMPS = [
-    {ko:'실온', id:'amb'},
-    {ko:'냉장', id:'chi'},
-    {ko:'냉동', id:'fro'},
-  ];
-
+  const TEMPS = [{ko:'실온',id:'amb'},{ko:'냉장',id:'chi'},{ko:'냉동',id:'fro'}];
   let me=null, canEdit=false, channels=[], editingId=null;
   const $=(id)=>document.getElementById(id);
   const comma=(n)=>Number(n||0).toLocaleString("ko-KR");
@@ -272,7 +257,6 @@
   const baseLabel=(b)=>b==="vat"?"VAT포함가":"공급가";
   const tv=(type,value)=>type==="fixed"?(comma(value)+"원"):((value||0)+"%");
 
-  // 채널유형 변경 시 직납 섹션 토글
   $("f-chtype").addEventListener("change", function(){
     $("direct-section").classList.toggle("show", this.value==="direct");
   });
@@ -285,8 +269,7 @@
     me=data;
     if (me.role==="pending"||me.is_active===false) return showGate("⏳","승인 대기 중이에요","관리자 승인 후 이용 가능합니다.","로그아웃",logout);
     canEdit=(me.role==="master"||me.role==="admin");
-    showApp();
-    await loadChannels();
+    showApp(); await loadChannels();
   }
 
   function showGate(icon,title,msg,btnText,btnFn){
@@ -306,9 +289,22 @@
   async function logout(){await sb.auth.signOut();goLogin();}
 
   async function loadChannels(){
+    // channels + channel_logistics 조인해서 유통사이익율 가져오기
     const { data,error }=await sb.from("channels").select("*").order("name",{ascending:true});
     if (error){alert("채널을 불러오지 못했어요: "+error.message);return;}
-    channels=data||[];
+
+    // 직납 채널의 품온별 유통사이익율 로드
+    const directIds = (data||[]).filter(c=>c.channel_type==='direct').map(c=>c.id);
+    let logisticsMap = {}; // channel_id => {실온: x, 냉장: y, 냉동: z}
+    if(directIds.length>0){
+      const { data:logData } = await sb.from("channel_logistics").select("*").in("channel_id", directIds);
+      if(logData) logData.forEach(r=>{
+        if(!logisticsMap[r.channel_id]) logisticsMap[r.channel_id]={};
+        logisticsMap[r.channel_id][r.temperature] = r.dist_rate||0;
+      });
+    }
+
+    channels=(data||[]).map(c=>({...c, _logistics: logisticsMap[c.id]||{}}));
     renderTable();
   }
 
@@ -320,12 +316,23 @@
       if(!keyword) return true;
       return (c.name||"").toLowerCase().includes(keyword);
     });
-    const tbody=$("rows");
-    tbody.innerHTML="";
+    const tbody=$("rows"); tbody.innerHTML="";
     $("empty").style.display=list.length?"none":"block";
     list.forEach(c=>{
       const tr=document.createElement("tr");
       if(c.is_active===false) tr.className="inactive";
+
+      // 직납채널이면 품온별 유통사이익율 표시
+      let distRateCell = '-';
+      if(c.channel_type==='direct' && c._logistics){
+        const parts = ['실온','냉장','냉동']
+          .map(t=> c._logistics[t]!=null ? `${t} ${c._logistics[t]}%` : null)
+          .filter(Boolean);
+        if(parts.length>0){
+          distRateCell = `<span class="dist-rate-cell" style="font-size:12px;line-height:1.6;">${parts.join('<br>')}</span>`;
+        }
+      }
+
       tr.innerHTML=`
         <td class="cname">${esc(c.name)}</td>
         <td>${typeTag(c.channel_type)}</td>
@@ -335,6 +342,7 @@
         <td class="num">${tv(c.hq_type,c.hq_value)}</td>
         <td class="num">${tv(c.div_type,c.div_value)}</td>
         <td class="num">${comma(c.other_fixed)}원</td>
+        <td class="ctr">${distRateCell}</td>
         <td>${c.is_active===false?'<span class="status-off">비활성</span>':'<span class="status-on">활성</span>'}</td>
         <td></td>`;
       if(canEdit){
@@ -369,15 +377,10 @@
     $("f-hqValue").value=c?(c.hq_value??""):"";
     $("f-divType").value=c?(c.div_type||"rate"):"rate";
     $("f-divValue").value=c?(c.div_value??""):"";
-
-    // 직납 섹션 표시 여부
     const isDirect=(c?.channel_type==="direct");
     $("direct-section").classList.toggle("show", isDirect);
-
-    // 직납이면 기존 품온별 값 로드
     if (isDirect && c?.id){
       const { data } = await sb.from("channel_logistics").select("*").eq("channel_id",c.id);
-      // 초기화
       TEMPS.forEach(t=>{ $("d-fr-"+t.id).value=0; $("d-dr-"+t.id).value=0; });
       if (data) data.forEach(r=>{
         const t=TEMPS.find(x=>x.ko===r.temperature);
@@ -386,70 +389,48 @@
     } else {
       TEMPS.forEach(t=>{ $("d-fr-"+t.id).value=""; $("d-dr-"+t.id).value=""; });
     }
-
     $("overlay").classList.add("show");
   }
   function closeModal(){$("overlay").classList.remove("show");}
 
   async function saveChannel(){
     const payload={
-      name:$("f-name").value.trim(),
-      channel_type:$("f-chtype").value,
-      commission_rate:numVal("f-fee"),
-      commission_base:$("f-base").value,
-      ad_type:$("f-adType").value,
-      ad_value:numVal("f-adValue"),
-      promotion_type:$("f-promoType").value,
-      promotion_value:numVal("f-promoValue"),
-      hq_type:$("f-hqType").value,
-      hq_value:numVal("f-hqValue"),
-      div_type:$("f-divType").value,
-      div_value:numVal("f-divValue"),
-      other_fixed:numVal("f-other"),
-      updated_by:me.id,
-      updated_at:new Date().toISOString(),
+      name:$("f-name").value.trim(),channel_type:$("f-chtype").value,
+      commission_rate:numVal("f-fee"),commission_base:$("f-base").value,
+      ad_type:$("f-adType").value,ad_value:numVal("f-adValue"),
+      promotion_type:$("f-promoType").value,promotion_value:numVal("f-promoValue"),
+      hq_type:$("f-hqType").value,hq_value:numVal("f-hqValue"),
+      div_type:$("f-divType").value,div_value:numVal("f-divValue"),
+      other_fixed:numVal("f-other"),updated_by:me.id,updated_at:new Date().toISOString(),
     };
     if(!payload.name){alert("채널명은 꼭 입력해야 해요.");return;}
-
-    let channelId=editingId;
-    let error;
-
+    let channelId=editingId, error;
     if(editingId===null){
       if(channels.some(c=>c.name===payload.name)){alert("이미 같은 이름의 채널이 있어요.");return;}
       payload.created_by=me.id;
       const res=await sb.from("channels").insert(payload).select().single();
-      error=res.error;
-      if(!error) channelId=res.data.id;
+      error=res.error; if(!error) channelId=res.data.id;
     } else {
       ({error}=await sb.from("channels").update(payload).eq("id",editingId));
     }
     if(error){alert("저장 실패: "+error.message);return;}
-
-    // 직납이면 품온별 값 upsert
     if(payload.channel_type==="direct" && channelId){
       const rows=TEMPS.map(t=>({
-        channel_id:channelId,
-        temperature:t.ko,
+        channel_id:channelId,temperature:t.ko,
         freight_rate:parseFloat($("d-fr-"+t.id).value)||0,
         dist_rate:parseFloat($("d-dr-"+t.id).value)||0,
-        updated_by:me.id,
-        updated_at:new Date().toISOString(),
+        updated_by:me.id,updated_at:new Date().toISOString(),
       }));
-      const { error:lerr }=await sb.from("channel_logistics")
-        .upsert(rows,{onConflict:"channel_id,temperature"});
+      const { error:lerr }=await sb.from("channel_logistics").upsert(rows,{onConflict:"channel_id,temperature"});
       if(lerr){alert("운반비 저장 실패: "+lerr.message);return;}
     }
-
-    closeModal();
-    await loadChannels();
+    closeModal(); await loadChannels();
   }
 
   async function toggleActive(c){
     const next=!(c.is_active!==false);
     if(!confirm(`'${c.name}' 채널을 ${next?"활성화":"비활성"} 할까요?`)) return;
-    const {error}=await sb.from("channels")
-      .update({is_active:next,updated_by:me.id,updated_at:new Date().toISOString()})
-      .eq("id",c.id);
+    const {error}=await sb.from("channels").update({is_active:next,updated_by:me.id,updated_at:new Date().toISOString()}).eq("id",c.id);
     if(error){alert("처리 실패: "+error.message);return;}
     await loadChannels();
   }
