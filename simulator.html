@@ -503,7 +503,12 @@
       setVal('hqValue',     opt.dataset.hqvalue);
       setVal('divType',     opt.dataset.divtype);
       setVal('divValue',    opt.dataset.divvalue);
-      applyLogistics();
+      // 직납이면 해당 채널의 운반비율/유통사이익율 DB에서 로드
+      if (opt.dataset.chtype === 'direct' && opt.value){
+        loadDirectFreight(opt.value);
+      } else {
+        applyLogistics();
+      }
     }
 
     // 운반비 마스터 로드
@@ -584,11 +589,7 @@
 
     document.getElementById('channel').addEventListener('change', e => {
       const opt = e.target.options[e.target.selectedIndex];
-      fillFromChannelOption(opt);
-      // 직납 채널이면 해당 채널의 운반비율 DB에서 로드
-      if (opt.dataset.chtype === 'direct'){
-        loadDirectFreight(e.target.value);
-      }
+      fillFromChannelOption(opt);  // 직납 여부 판단 및 운반비 로드가 여기서 처리됨
     });
 
     ['cost','packQty','targetFreightRate','feeRate','feeBase','adType','adValue','promoType','promoValue',
