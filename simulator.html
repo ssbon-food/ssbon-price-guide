@@ -61,13 +61,15 @@
     table.unit-table{width:100%;border-collapse:collapse;font-size:13px;}
     table.unit-table th{padding:8px 6px;font-size:11px;color:var(--muted);font-weight:600;border-bottom:1px solid var(--line);background:#fafbfa;text-align:center;white-space:nowrap;}
     table.unit-table th.tl{text-align:left;}
-    table.unit-table td{padding:5px 4px;border-bottom:1px solid var(--line);text-align:center;vertical-align:middle;}
+    table.unit-table td{padding:4px 4px;border-bottom:1px solid var(--line);text-align:center;vertical-align:middle;height:52px;}
     table.unit-table td.tl{text-align:left;}
     table.unit-table tr:last-child td{border-bottom:none;}
     table.unit-table input[type="number"]{width:100%;font-family:inherit;font-size:12px;padding:5px 6px;border:1px solid var(--line);border-radius:7px;background:#fafbfa;text-align:right;}
     table.unit-table input:focus{outline:none;border-color:var(--accent);background:#fff;}
     table.unit-table input.readonly{background:#f0f3f0;color:var(--muted);}
-    .disc-label{font-size:10px;color:var(--muted);text-align:center;margin-top:2px;}
+    .disc-label{font-size:10px;color:var(--muted);text-align:center;display:block;line-height:1;margin-top:1px;height:13px;}
+    .disc-wrap{display:flex;flex-direction:column;align-items:stretch;}
+    .disc-wrap input{flex:1;}
     .btn-del-row{background:none;border:none;color:#ccc;cursor:pointer;font-size:14px;padding:2px 6px;border-radius:4px;}
     .btn-del-row:hover{color:var(--warn);background:#fef2f2;}
     .btn-add-row{font-family:inherit;font-size:12px;font-weight:600;padding:7px 12px;border-radius:8px;border:1px dashed var(--line);background:transparent;color:var(--muted);cursor:pointer;width:100%;margin-top:8px;transition:.12s;}
@@ -505,19 +507,19 @@
     const initEaMp  = qty>0 && initMp>0 ? Math.round(initMp/qty) : 0;
 
     tr.innerHTML=`
-      <td class="tl"><input type="number" class="qty" value="${qty}" min="1" /></td>
-      <td><input type="number" class="cost" value="${totalCost}" disabled /></td>
-      <td><input type="number" class="ea-np" value="${initEaNp}" /></td>
+      <td class="tl"><input type="number" class="qty" value="${qty}" min="1" /><div class="disc-label" style="visibility:hidden;">-</div></td>
+      <td><input type="number" class="cost" value="${totalCost}" disabled /><div class="disc-label" style="visibility:hidden;">-</div></td>
+      <td><input type="number" class="ea-np" value="${initEaNp}" /><div class="disc-label" style="visibility:hidden;">-</div></td>
       <td>
         <input type="number" class="np" value="${initNp}" />
         <div class="disc-label ap-pct">-</div>
       </td>
-      <td><input type="number" class="ea-ap" value="${initEaAp}" /></td>
+      <td><input type="number" class="ea-ap" value="${initEaAp}" /><div class="disc-label" style="visibility:hidden;">-</div></td>
       <td>
         <input type="number" class="ap" value="${initAp}" />
         <div class="disc-label ap-pct2">-</div>
       </td>
-      <td><input type="number" class="ea-mp" value="${initEaMp}" /></td>
+      <td><input type="number" class="ea-mp" value="${initEaMp}" /><div class="disc-label" style="visibility:hidden;">-</div></td>
       <td>
         <input type="number" class="mp" value="${initMp}" />
         <div class="disc-label mp-pct">-</div>
