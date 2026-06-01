@@ -512,12 +512,12 @@
       <td><input type="number" class="ea-np" value="${initEaNp}" /><div class="disc-label" style="visibility:hidden;">-</div></td>
       <td>
         <input type="number" class="np" value="${initNp}" />
-        <div class="disc-label ap-pct">-</div>
+        <div class="disc-label" style="visibility:hidden;">-</div>
       </td>
       <td><input type="number" class="ea-ap" value="${initEaAp}" /><div class="disc-label" style="visibility:hidden;">-</div></td>
       <td>
         <input type="number" class="ap" value="${initAp}" />
-        <div class="disc-label ap-pct2">-</div>
+        <div class="disc-label ap-pct">-</div>
       </td>
       <td><input type="number" class="ea-mp" value="${initEaMp}" /><div class="disc-label" style="visibility:hidden;">-</div></td>
       <td>
@@ -593,9 +593,8 @@
     const np = parseFloat(tr.querySelector('.np').value)||0;
     const ap = parseFloat(tr.querySelector('.ap').value)||0;
     const mp = parseFloat(tr.querySelector('.mp').value)||0;
-    tr.querySelector('.ap-pct').textContent  = (np>0&&ap>0) ? `↓${(((np-ap)/np)*100).toFixed(1)}%` : '-';
-    tr.querySelector('.ap-pct2').textContent = (np>0&&ap>0) ? `↓${(((np-ap)/np)*100).toFixed(1)}%` : '-';
-    tr.querySelector('.mp-pct').textContent  = (np>0&&mp>0) ? `↓${(((np-mp)/np)*100).toFixed(1)}%` : '-';
+    tr.querySelector('.ap-pct').textContent = (np>0&&ap>0) ? `↓${(((np-ap)/np)*100).toFixed(1)}%` : '-';
+    tr.querySelector('.mp-pct').textContent = (np>0&&mp>0) ? `↓${(((np-mp)/np)*100).toFixed(1)}%` : '-';
   }
 
   $('btn-add-row').addEventListener('click', ()=>{ addUnitRow(null); });
