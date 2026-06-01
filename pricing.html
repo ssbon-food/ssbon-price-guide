@@ -220,9 +220,6 @@
       me = p;
       $('authGate').style.display='none'; $('app').style.display='block';
       initNav(p);
-      
-      $('who-info').textContent = (p.name||p.email||'')+(p.role?' · '+p.role:'');
-      if(p.role==='admin') 
       await loadAll();
     } else {
       $('gateMsg').textContent='승인 대기 중입니다';
