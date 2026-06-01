@@ -318,6 +318,7 @@
   }
   function showApp(){
     $("gate").style.display="none"; $("app").style.display="block";
+      initNav(me);
     $("btn-new").style.display=canEdit?"inline-block":"none";
   }
   function goLogin(){location.href="index.html";}
