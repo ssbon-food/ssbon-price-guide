@@ -80,31 +80,28 @@
     .gate .icon { font-size:40px; }
     .gate h2 { margin:14px 0 8px; }
     .gate p { color:var(--muted); margin:0 0 20px; }
+    /* ── 공통 NAV ── */
+  .ssbon-nav{background:#fff;border-bottom:1px solid #e3e8e3;position:sticky;top:0;z-index:100;}
+  .ssbon-nav-inner{max-width:1400px;margin:0 auto;padding:0 20px;height:52px;display:flex;align-items:center;}
+  .ssbon-nav-brand{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:#1d2620;white-space:nowrap;margin-right:24px;text-decoration:none;}
+  .ssbon-nav-dot{width:8px;height:8px;border-radius:50%;background:#2f7d4f;display:inline-block;flex-shrink:0;}
+  .ssbon-nav-links{display:flex;gap:2px;flex:1;}
+  .ssbon-nav-links a{text-decoration:none;font-size:13px;font-weight:600;color:#6b7770;padding:6px 12px;border-radius:8px;transition:.12s;white-space:nowrap;}
+  .ssbon-nav-links a:hover{background:#f0f3f0;color:#1d2620;}
+  .ssbon-nav-links a.active{background:#e7f2ec;color:#2f7d4f;}
+  .ssbon-nav-right{margin-left:auto;display:flex;align-items:center;gap:8px;padding-left:16px;}
+  .ssbon-who{font-size:12px;color:#6b7770;white-space:nowrap;}
+  .ssbon-role{background:#e7f2ec;color:#2f7d4f;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;}
+  .ssbon-nav-btn{font-family:inherit;font-size:12px;font-weight:600;padding:5px 12px;border-radius:8px;cursor:pointer;color:#2f7d4f;background:#fff;border:1px solid #e3e8e3;}
+  .ssbon-nav-btn:hover{background:#f0f3f0;}
+  .ssbon-nav-btn.primary{color:#fff;background:#2f7d4f;border-color:#2f7d4f;}
+  .ssbon-nav-btn.primary:hover{background:#266a42;}
   </style>
 </head>
 
 <body>
   <!-- 공통 상단 메뉴 -->
-  <div class="ssbon-nav">
-    <div class="ssbon-nav-inner">
-      <span class="ssbon-nav-brand"><i class="ssbon-nav-dot"></i>순수본 가격도구</span>
-      <nav class="ssbon-nav-links">
-        <a href="simulator.html" data-nav="simulator.html">가격 시뮬레이터</a>
-        <a href="pricing.html" data-nav="pricing.html">가격정책</a>
-        <a href="products.html" data-nav="products.html">상품 마스터</a>
-        <a href="channels.html" data-nav="channels.html">채널 마스터</a>
-        <a href="freight.html" data-nav="freight.html">운반비 마스터</a>
-      </nav>
-    </div>
-  </div>
-  <script>
-    (function () {
-      var page = location.pathname.split("/").pop() || "index.html";
-      document.querySelectorAll('.ssbon-nav-links a[data-nav]').forEach(function (a) {
-        if (a.getAttribute("data-nav") === page) a.classList.add("active");
-      });
-    })();
-  </script>
+  
 
   <!-- 게이트 -->
   <div id="gate" class="gate" style="display:none;">
@@ -116,35 +113,35 @@
 
   <!-- 앱 -->
   <div id="app" style="display:none;">
-    <header>
-      <div class="brand"><h1>운반비 마스터 <small>· 순수본 식품본부</small></h1></div>
-      <div class="who">
-        <span id="who-name"></span>
-        <span class="role-badge" id="who-role"></span>
-        <button class="btn-ghost btn-sm" id="btn-logout">로그아웃</button>
-      </div>
-    </header>
+    
 
     <main>
-      <!-- (1) 위탁 운반비 -->
-      <div class="card">
-        <h2 class="card-title">위탁 운반비 (전 위탁채널 공통)</h2>
-        <p class="card-sub">박스당 운반비예요. 모든 위탁채널이 이 값을 함께 사용합니다.</p>
-        <table class="mtable">
-          <thead><tr><th>품온</th><th class="num">운반비 (원/박스)</th></tr></thead>
-          <tbody>
-            <tr><td>실온</td><td class="num"><input id="cf-amb" type="number" step="any" /></td></tr>
-            <tr><td>냉장</td><td class="num"><input id="cf-chi" type="number" step="any" /></td></tr>
-            <tr><td>냉동</td><td class="num"><input id="cf-fro" type="number" step="any" /></td></tr>
-          </tbody>
-        </table>
-        <div class="save-row">
-          <span class="saved-msg" id="consign-saved">저장됐어요</span>
-          <button class="btn-primary" id="btn-save-consign">위탁 운반비 저장</button>
-        </div>
-      </div>
-
-      <!-- (2) 직납 채널별 -->
+      <!-- (1) 위탁 운반비 --<nav class="ssbon-nav">
+  <div class="ssbon-nav-inner">
+    <a class="ssbon-nav-brand" href="simulator.html"><span class="ssbon-nav-dot"></span>순수본 가격도구</a>
+    <div class="ssbon-nav-links">
+      <a href="simulator.html" data-nav="simulator.html">가격 시뮬레이터</a>
+      <a href="pricing.html" data-nav="pricing.html">가격정책</a>
+      <a href="products.html" data-nav="products.html">상품 마스터</a>
+      <a href="channels.html" data-nav="channels.html">채널 마스터</a>
+      <a href="freight.html" data-nav="freight.html">운반비 마스터</a>
+    </div>
+    <div class="ssbon-nav-right">
+      <span class="ssbon-who" id="nav-who"></span>
+      <span class="ssbon-role" id="nav-role" style="display:none;"></span>
+      <button class="ssbon-nav-btn primary" id="nav-admin-btn" style="display:none;" onclick="location.href='admin.html'">사용자 관리</button>
+      <button class="ssbon-nav-btn" id="nav-logout-btn" style="display:none;">로그아웃</button>
+    </div>
+  </div>
+</nav>
+<script>
+(function(){
+  var p=location.pathname.split('/').pop()||'index.html';
+  document.querySelectorAll('.ssbon-nav-links a[data-nav]').forEach(function(a){
+    if(a.getAttribute('data-nav')===p) a.classList.add('active');
+  });
+})();
+</script>>
       <div class="card">
         <h2 class="card-title">직납 채널별 운반비·유통사이익율</h2>
         <p class="card-sub">직납채널을 고르면 그 채널의 품온별 값을 편집할 수 있어요.</p>
@@ -182,6 +179,20 @@
     const SUPABASE_URL = "https://ngvgzfhvjaowwhnmmpex.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ndmd6Zmh2amFvd3dobm1tcGV4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMzgyNjQsImV4cCI6MjA5NTYxNDI2NH0.jO5Ab8trHPyamHhYFXi9UWvQ217pDJW9qplBWph8cgg";
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  function initNav(user) {
+    var who = document.getElementById('nav-who');
+    var role = document.getElementById('nav-role');
+    var adminBtn = document.getElementById('nav-admin-btn');
+    var logoutBtn = document.getElementById('nav-logout-btn');
+    if(who) who.textContent = (user.name||user.email||'');
+    if(role){ role.textContent = user.role||''; role.style.display='inline'; }
+    if(adminBtn) adminBtn.style.display = (user.role==='admin')?'inline-block':'none';
+    if(logoutBtn){
+      logoutBtn.style.display='inline-block';
+      logoutBtn.onclick = async function(){ await sb.auth.signOut(); location.href='index.html'; };
+    }
+  }
 
     // 품온 3종 (화면 표시값 ↔ 입력칸 id 접미사)
     const TEMPS = [{ ko: "실온", id: "amb" }, { ko: "냉장", id: "chi" }, { ko: "냉동", id: "fro" }];
