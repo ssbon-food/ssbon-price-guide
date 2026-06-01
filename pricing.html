@@ -210,9 +210,9 @@
   const comma = n => Number(Math.round(n)||0).toLocaleString('ko-KR');
   const pct = n => n.toFixed(1)+'%';
 
-  $('logoutBtn').addEventListener('click', async()=>{ await sb.auth.signOut(); location.href='./index.html'; });
+   location.href='./index.html'; });
   $('gateBtn').addEventListener('click',   async()=>{ await sb.auth.signOut(); location.href='./index.html'; });
-  $('adminBtn').addEventListener('click',  ()=>{ location.href='./admin.html'; });
+   });
 
   (async function guard(){
     const { data:{ session } } = await sb.auth.getSession();
@@ -222,9 +222,9 @@
     if (p && p.is_active && p.role!=='pending'){
       me = p;
       $('authGate').style.display='none'; $('app').style.display='block';
-      $('logoutBtn').style.display='inline-block';
+      
       $('who-info').textContent = (p.name||p.email||'')+(p.role?' · '+p.role:'');
-      if(p.role==='admin') $('adminBtn').style.display='inline-block';
+      if(p.role==='admin') 
       await loadAll();
     } else {
       $('gateMsg').textContent='승인 대기 중입니다';
