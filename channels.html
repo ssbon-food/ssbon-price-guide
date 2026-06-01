@@ -133,6 +133,7 @@
         <thead>
           <tr>
             <th>채널명</th><th>유형</th>
+            <th class="ctr">대표<br><span style="font-size:11px;font-weight:400;">채널</span></th>
             <th class="ctr">유통사이익율<br><span style="font-size:11px;font-weight:400;">(직납만)</span></th>
             <th>지급수수료</th>
             <th class="num">광고선전비</th><th class="num">판매촉진비</th>
@@ -337,6 +338,9 @@
       tr.innerHTML=`
         <td class="cname">${esc(c.name)}</td>
         <td>${typeTag(c.channel_type)}</td>
+        <td class="ctr">${c.is_representative
+          ? '<span style="color:#2f7d4f;font-weight:700;font-size:13px;">★</span>'
+          : '<span style="color:#ccc;font-size:13px;">☆</span>'}</td>
         <td class="ctr">${distRateCell}</td>
         <td style="max-width:120px;">${c.commission_rate||0}% <span class="sub">/ ${baseLabel(c.commission_base)}</span></td>
         <td class="num">${tv(c.ad_type,c.ad_value)}</td>
@@ -355,6 +359,11 @@
         tog.className="btn-ghost btn-sm"; tog.style.marginLeft="6px";
         tog.textContent=c.is_active===false?"활성화":"비활성";
         tog.onclick=()=>toggleActive(c); cell.appendChild(tog);
+        const repBtn=document.createElement("button");
+        repBtn.className="btn-ghost btn-sm"; repBtn.style.marginLeft="6px";
+        repBtn.textContent=c.is_representative?"★ 대표해제":"☆ 대표설정";
+        repBtn.style.color=c.is_representative?"#2f7d4f":"#6b7770";
+        repBtn.onclick=()=>toggleRepresentative(c); cell.appendChild(repBtn);
       }
       tbody.appendChild(tr);
     });
@@ -432,6 +441,24 @@
     const next=!(c.is_active!==false);
     if(!confirm(`'${c.name}' 채널을 ${next?"활성화":"비활성"} 할까요?`)) return;
     const {error}=await sb.from("channels").update({is_active:next,updated_by:me.id,updated_at:new Date().toISOString()}).eq("id",c.id);
+    if(error){alert("처리 실패: "+error.message);return;}
+    await loadChannels();
+  }
+
+  async function toggleRepresentative(c){
+    const next = !c.is_representative;
+    // 같은 유형 내에서 기존 대표 해제 후 새로 설정
+    if(next){
+      if(!confirm(`'${c.name}'을(를) ${c.channel_type==='direct'?'직납':'위탁'} 채널의 대표채널로 설정할까요?\n기존 대표채널은 자동 해제됩니다.`)) return;
+      // 같은 유형의 기존 대표 해제
+      const sameType = channels.filter(ch=>ch.channel_type===c.channel_type && ch.is_representative && ch.id!==c.id);
+      for(const ch of sameType){
+        await sb.from("channels").update({is_representative:false,updated_by:me.id,updated_at:new Date().toISOString()}).eq("id",ch.id);
+      }
+    } else {
+      if(!confirm(`'${c.name}' 대표채널 설정을 해제할까요?`)) return;
+    }
+    const {error}=await sb.from("channels").update({is_representative:next,updated_by:me.id,updated_at:new Date().toISOString()}).eq("id",c.id);
     if(error){alert("처리 실패: "+error.message);return;}
     await loadChannels();
   }
