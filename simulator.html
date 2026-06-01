@@ -18,18 +18,18 @@
     *{box-sizing:border-box;margin:0;padding:0;}
     body{font-family:"Pretendard",-apple-system,"Malgun Gothic",sans-serif;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.5;}
 
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
+    .ssbon-nav{background:#fff;border-bottom:1px solid #e3e8e3;}
+    .ssbon-nav-inner{max-width:1400px;margin:0 auto;padding:0 18px;min-height:48px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+    .ssbon-nav-brand{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:700;color:#1d2620;white-space:nowrap;}
+    .ssbon-nav-dot{width:8px;height:8px;border-radius:50%;background:#2f7d4f;display:inline-block;}
+    .ssbon-nav-links{display:flex;gap:4px;flex:1;}
+    .ssbon-nav-links a{text-decoration:none;font-size:13px;font-weight:600;color:#6b7770;padding:6px 11px;border-radius:8px;transition:.12s;}
+    .ssbon-nav-links a:hover{background:#f0f3f0;color:#1d2620;}
+    .ssbon-nav-links a.active{background:#e7f2ec;color:#2f7d4f;}
+    .ssbon-nav-right{margin-left:auto;display:flex;align-items:center;gap:8px;}
+    .ssbon-nav-btn{font-family:inherit;font-size:12px;font-weight:600;padding:6px 12px;border-radius:8px;cursor:pointer;color:#2f7d4f;background:#fff;border:1px solid #e3e8e3;}
+    .ssbon-nav-btn.primary{color:#fff;background:#2f7d4f;border-color:#2f7d4f;}
+    .who-info{font-size:12px;color:#6b7770;}
 
     .sim-layout{display:grid;grid-template-columns:310px 1fr;gap:14px;padding:14px 18px 40px;max-width:1400px;margin:0 auto;}
     .left-col{display:flex;flex-direction:column;gap:10px;}
@@ -134,7 +134,6 @@
   </style>
 </head>
 <body>
-
 <nav class="ssbon-nav">
   <div class="ssbon-nav-inner">
     <a class="ssbon-nav-brand" href="simulator.html"><span class="ssbon-nav-dot"></span>순수본 가격도구</a>
@@ -160,6 +159,30 @@
     if(a.getAttribute('data-nav')===p) a.classList.add('active');
   });
 })();
+</script>
+  <div class="ssbon-nav-inner">
+    <span class="ssbon-nav-brand"><i class="ssbon-nav-dot"></i>순수본 가격도구</span>
+    <nav class="ssbon-nav-links">
+      <a href="simulator.html" data-nav="simulator.html">가격 시뮬레이터</a>
+      <a href="pricing.html" data-nav="pricing.html">가격정책</a>
+      <a href="products.html" data-nav="products.html">상품 마스터</a>
+      <a href="channels.html" data-nav="channels.html">채널 마스터</a>
+      <a href="freight.html" data-nav="freight.html">운반비 마스터</a>
+    </nav>
+    <div class="ssbon-nav-right">
+      <span class="who-info" id="who-info"></span>
+      <button id="adminBtn" class="ssbon-nav-btn primary" style="display:none;">사용자 관리</button>
+      <button id="logoutBtn" class="ssbon-nav-btn" style="display:none;">로그아웃</button>
+    </div>
+  </div>
+</div>
+<script>
+  (function(){
+    var page=location.pathname.split("/").pop()||"index.html";
+    document.querySelectorAll('.ssbon-nav-links a[data-nav]').forEach(function(a){
+      if(a.getAttribute("data-nav")===page) a.classList.add("active");
+    });
+  })();
 </script>
 
 <div id="authGate">
@@ -362,7 +385,6 @@
   const SB_URL = "https://ngvgzfhvjaowwhnmmpex.supabase.co";
   const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ndmd6Zmh2amFvd3dobm1tcGV4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMzgyNjQsImV4cCI6MjA5NTYxNDI2NH0.jO5Ab8trHPyamHhYFXi9UWvQ217pDJW9qplBWph8cgg";
   const sb = window.supabase.createClient(SB_URL, SB_KEY);
-
   function initNav(user) {
     var who = document.getElementById('nav-who');
     var role = document.getElementById('nav-role');
@@ -391,9 +413,9 @@
   const comma = n => Number(n||0).toLocaleString('ko-KR');
   const numV = id => parseFloat($(id).value)||0;
 
-  
-  
-  );
+  $('logoutBtn').addEventListener('click', async()=>{ await sb.auth.signOut(); location.href='./index.html'; });
+  $('gateBtn').addEventListener('click',   async()=>{ await sb.auth.signOut(); location.href='./index.html'; });
+  $('adminBtn').addEventListener('click',  ()=>{ location.href='./admin.html'; });
 
   (async function guard(){
     const { data:{ session } } = await sb.auth.getSession();
@@ -403,7 +425,9 @@
     if (p && p.is_active && p.role!=='pending'){
       me = p; canEdit = (p.role==='master'||p.role==='admin');
       $('authGate').style.display='none'; $('app').style.display='block';
-      initNav(p);
+      $('logoutBtn').style.display='inline-block';
+      $('who-info').textContent = (p.name||p.email||'')+(p.role?' · '+p.role:'');
+      if(p.role==='admin') $('adminBtn').style.display='inline-block';
       if(canEdit) $('btn-apply').style.display='inline-block';
       await loadAllMasters();
     } else {
