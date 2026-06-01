@@ -428,6 +428,11 @@
       o.dataset.info = JSON.stringify(p);
       sel.appendChild(o);
     });
+    // 신규상품 직접입력 옵션 항상 마지막에 추가
+    const newOpt = document.createElement('option');
+    newOpt.value = '__new__';
+    newOpt.textContent = '✏️ 신규상품 직접입력';
+    sel.appendChild(newOpt);
   }
 
   async function loadChannels(){
