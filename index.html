@@ -1,11 +1,9 @@
 <!DOCTYPE html>
 <!--
   =====================================================================
-  순수본 식품본부 · 상품 가격/이익 시뮬레이터
-  파일: index.html  (로그인 페이지 · 이메일+비밀번호 방식)
-  - 가입: 회사 이메일 + 비밀번호로 즉시 가입 (메일 발송 없음)
-  - 로그인: 이메일 + 비밀번호
-  - 회사 도메인(@bongroup.co.kr)만 가입 허용
+  순수본 식품본부 · 로그인 페이지 (이메일+비밀번호 + 승인 관문)
+  - 가입: 회사 이메일 + 비밀번호 (메일 발송 없음) → role=pending 자동 등록
+  - 로그인 후 역할 확인: 활성이면 시뮬레이터로, pending이면 승인 대기 안내
   =====================================================================
 -->
 <html lang="ko">
@@ -17,10 +15,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <style>
-    :root {
-      --bg:#f4f1ea; --ink:#2b2620; --muted:#8a8073; --line:#e2dccf;
-      --accent:#3f6b46; --accent-dk:#2d4e32; --card:#ffffff; --field:#fbf9f4; --danger:#b4452f;
-    }
+    :root { --bg:#f4f1ea; --ink:#2b2620; --muted:#8a8073; --line:#e2dccf;
+      --accent:#3f6b46; --accent-dk:#2d4e32; --card:#ffffff; --field:#fbf9f4; --danger:#b4452f; }
     * { box-sizing:border-box; margin:0; padding:0; }
     body { font-family:'IBM Plex Sans KR', sans-serif; background:var(--bg); color:var(--ink);
       min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;
@@ -30,24 +26,14 @@
     .eyebrow { font-size:12px; letter-spacing:0.14em; text-transform:uppercase; color:var(--accent); font-weight:600; margin-bottom:14px; }
     h1 { font-family:'Gowun Batang', serif; font-size:26px; line-height:1.35; margin-bottom:10px; }
     .desc { font-size:14px; color:var(--muted); line-height:1.6; margin-bottom:24px; }
-
-    /* 로그인/가입 탭 */
-    .tabs { display:flex; gap:6px; background:var(--field); border:1px solid var(--line);
-      border-radius:11px; padding:4px; margin-bottom:22px; }
-    .tab { flex:1; text-align:center; font-size:14px; font-weight:600; padding:9px; border-radius:8px;
-      cursor:pointer; color:var(--muted); border:none; background:transparent; font-family:inherit; }
+    .tabs { display:flex; gap:6px; background:var(--field); border:1px solid var(--line); border-radius:11px; padding:4px; margin-bottom:22px; }
+    .tab { flex:1; text-align:center; font-size:14px; font-weight:600; padding:9px; border-radius:8px; cursor:pointer; color:var(--muted); border:none; background:transparent; font-family:inherit; }
     .tab.active { background:var(--card); color:var(--accent); box-shadow:0 2px 6px -3px rgba(43,38,32,0.3); }
-
     label { display:block; font-size:13px; font-weight:600; margin-bottom:8px; margin-top:14px; }
-    input { width:100%; font-family:inherit; font-size:15px; padding:13px 15px; border:1px solid var(--line);
-      border-radius:10px; background:var(--field); color:var(--ink); transition:border-color 0.15s, box-shadow 0.15s; }
+    input { width:100%; font-family:inherit; font-size:15px; padding:13px 15px; border:1px solid var(--line); border-radius:10px; background:var(--field); color:var(--ink); transition:border-color 0.15s, box-shadow 0.15s; }
     input:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(63,107,70,0.12); }
-
-    button.submit { width:100%; margin-top:20px; font-family:inherit; font-size:15px; font-weight:600;
-      color:#fff; background:var(--accent); border:none; border-radius:10px; padding:14px; cursor:pointer; transition:background 0.15s; }
-    button.submit:hover { background:var(--accent-dk); }
-    button.submit:disabled { opacity:0.55; cursor:not-allowed; }
-
+    button.submit { width:100%; margin-top:20px; font-family:inherit; font-size:15px; font-weight:600; color:#fff; background:var(--accent); border:none; border-radius:10px; padding:14px; cursor:pointer; transition:background 0.15s; }
+    button.submit:hover { background:var(--accent-dk); } button.submit:disabled { opacity:0.55; cursor:not-allowed; }
     .message { margin-top:18px; font-size:13.5px; line-height:1.6; min-height:20px; }
     .message.ok { color:var(--accent-dk); } .message.error { color:var(--danger); }
     .footer { margin-top:28px; padding-top:18px; border-top:1px solid var(--line); font-size:12px; color:var(--muted); text-align:center; }
@@ -60,7 +46,6 @@
     <h1>상품 가격·이익 시뮬레이터</h1>
     <p class="desc" id="desc">회사 이메일과 비밀번호로 로그인하세요.</p>
 
-    <!-- 로그인 / 가입 탭 -->
     <div class="tabs">
       <button class="tab active" id="tab-login">로그인</button>
       <button class="tab" id="tab-signup">가입</button>
@@ -68,25 +53,20 @@
 
     <label for="email">회사 이메일</label>
     <input type="email" id="email" placeholder="name@bongroup.co.kr" autocomplete="email" />
-
     <label for="password">비밀번호</label>
     <input type="password" id="password" placeholder="비밀번호 (6자 이상)" autocomplete="current-password" />
 
     <button class="submit" id="submitBtn">로그인</button>
-
     <p class="message" id="message"></p>
-
     <div class="footer">© 순수본(주) 식품본부 · 내부 전용 도구</div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
-    // [1] Supabase 연결 (이름은 supabaseClient — 라이브러리 'supabase'와 충돌 방지)
     const SUPABASE_URL = "https://ngvgzfhvjaowwhnmmpex.supabase.co";
     const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_Mxqz7HBIPJNp0UQUgjsmiA_lHSfCh-A";
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 
-    // [2] 화면 요소
     const emailInput = document.getElementById("email");
     const pwInput    = document.getElementById("password");
     const submitBtn  = document.getElementById("submitBtn");
@@ -96,20 +76,16 @@
     const tabSignup  = document.getElementById("tab-signup");
 
     const ALLOWED_DOMAIN = "@bongroup.co.kr";
-    const AFTER_LOGIN = "./simulator.html";   // 로그인 후 이동할 화면
-    let mode = "login";                        // 'login' 또는 'signup'
+    const AFTER_LOGIN = "./simulator.html";
+    let mode = "login";
 
-    // [3] 메시지 표시 도우미
-    function showMessage(text, type) { messageEl.textContent = text; messageEl.className = "message " + type; }
+    function showMessage(t, type) { messageEl.textContent = t; messageEl.className = "message " + type; }
 
-    // [4] 탭 전환 (로그인 ↔ 가입)
     function setMode(m) {
-      mode = m;
-      const login = (m === "login");
+      mode = m; const login = (m === "login");
       tabLogin.classList.toggle("active", login);
       tabSignup.classList.toggle("active", !login);
       submitBtn.textContent = login ? "로그인" : "가입하기";
-      pwInput.setAttribute("autocomplete", login ? "current-password" : "new-password");
       descEl.textContent = login
         ? "회사 이메일과 비밀번호로 로그인하세요."
         : "회사 이메일로 가입하세요. 가입 후 관리자 승인을 받으면 사용할 수 있습니다.";
@@ -118,46 +94,53 @@
     tabLogin.addEventListener("click", () => setMode("login"));
     tabSignup.addEventListener("click", () => setMode("signup"));
 
-    // [5] 제출(로그인 또는 가입) 처리
+    // 로그인된 사용자의 역할을 확인해 분기
+    //  - 활성(admin/master/user) → 시뮬레이터로 이동
+    //  - pending/비활성 → 승인 대기 안내 (signOutIfPending이면 세션 정리)
+    async function checkActiveAndRoute(userId, signOutIfPending) {
+      let profile = null;
+      try {
+        const r = await supabaseClient.from('users').select('role,is_active').eq('id', userId).single();
+        profile = r.data;
+      } catch (e) {}
+      if (profile && profile.is_active && profile.role !== 'pending') {
+        window.location.href = AFTER_LOGIN;
+      } else {
+        if (signOutIfPending) await supabaseClient.auth.signOut();
+        showMessage("가입이 접수되었습니다. 관리자 승인 후 이용할 수 있습니다.", "ok");
+        submitBtn.disabled = false;
+      }
+    }
+
     async function handleSubmit() {
       const email = emailInput.value.trim().toLowerCase();
       const password = pwInput.value;
-
       if (!email || !password) { showMessage("이메일과 비밀번호를 입력해 주세요.", "error"); return; }
-
-      // 가입 시에만 도메인·비밀번호 길이 검사
       if (mode === "signup") {
-        if (!email.endsWith(ALLOWED_DOMAIN)) {
-          showMessage("회사 이메일(" + ALLOWED_DOMAIN + ")만 가입할 수 있습니다.", "error"); return;
-        }
+        if (!email.endsWith(ALLOWED_DOMAIN)) { showMessage("회사 이메일(" + ALLOWED_DOMAIN + ")만 가입할 수 있습니다.", "error"); return; }
         if (password.length < 6) { showMessage("비밀번호는 6자 이상이어야 합니다.", "error"); return; }
       }
-
       submitBtn.disabled = true;
       showMessage(mode === "login" ? "로그인 중..." : "가입 중...", "ok");
 
       let error;
-      if (mode === "login") {
-        ({ error } = await supabaseClient.auth.signInWithPassword({ email, password }));
-      } else {
-        ({ error } = await supabaseClient.auth.signUp({ email, password }));
-      }
+      if (mode === "login") ({ error } = await supabaseClient.auth.signInWithPassword({ email, password }));
+      else                  ({ error } = await supabaseClient.auth.signUp({ email, password }));
 
       if (error) {
         showMessage((mode === "login" ? "로그인 실패: " : "가입 실패: ") + error.message, "error");
         submitBtn.disabled = false;
       } else {
-        showMessage("성공! 시뮬레이터로 이동합니다...", "ok");
-        window.location.href = AFTER_LOGIN;
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        await checkActiveAndRoute(user.id, true);
       }
     }
-
     submitBtn.addEventListener("click", handleSubmit);
     pwInput.addEventListener("keydown", e => { if (e.key === "Enter") handleSubmit(); });
 
-    // [6] 이미 로그인되어 있으면 바로 시뮬레이터로
-    supabaseClient.auth.getSession().then(({ data }) => {
-      if (data.session) window.location.href = AFTER_LOGIN;
+    // 이미 로그인된 세션이 있으면 역할 확인 후 분기
+    supabaseClient.auth.getSession().then(async ({ data }) => {
+      if (data.session) await checkActiveAndRoute(data.session.user.id, false);
     });
   </script>
 </body>
