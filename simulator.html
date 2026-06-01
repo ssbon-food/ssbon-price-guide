@@ -1,15 +1,8 @@
 <!DOCTYPE html>
 <!--
-  =====================================================================
   순수본 식품본부 · 상품 가격/이익 시뮬레이터
-  파일: simulator.html  (상품 마스터 + 운반비율 표시 버전)
-  - 상품 마스터: 상품 고르면 품온·원가·입수·정상가 자동 적용
-  - 물류비 마스터: 품온·채널유형으로 운반비/유통사이익율 자동 적용
-      · 위탁 운반비 = 박스당 정액(원) → EA당 = 박스운반비 ÷ 입수
-      · 직납 운반비 = 공급가 × 운반비율(%), 유통사이익 = (판매가÷1.1) × 유통사이익율(%)
-  - 각 가격대에 실제 운반비율(%)을 목표와 비교 표시
-  ※ 로그인 없이 바로 여는 개발용 화면.
-  =====================================================================
+  파일: simulator.html  (DB 연결 버전)
+  - 상품/채널/운반비 마스터를 Supabase DB에서 실시간으로 읽어옴
 -->
 <html lang="ko">
 <head>
@@ -52,12 +45,6 @@
     .master summary::before { content:'▾ '; color:var(--accent); }
     .master:not([open]) summary::before { content:'▸ '; }
     .master summary .hint { font-family:'IBM Plex Sans KR'; font-size:12px; font-weight:400; color:var(--muted); margin-left:8px; }
-    .mtable { width:100%; border-collapse:collapse; margin-top:14px; font-size:13px; }
-    .mtable th, .mtable td { padding:8px 8px; text-align:left; border-bottom:1px solid var(--line); }
-    .mtable th { color:var(--muted); font-weight:600; font-size:11.5px; }
-    .mtable td:first-child, .mtable th:first-child { font-weight:600; color:var(--ink); width:80px; }
-    .mtable input { width:100%; font-family:inherit; font-size:13px; padding:7px 9px; border:1px solid var(--line); border-radius:8px; background:var(--field); text-align:right; }
-    .mtable input:focus { outline:none; border-color:var(--accent); }
 
     .bar { display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap; margin-top:14px; margin-bottom:4px; }
     .bar .field { flex:1; min-width:200px; }
@@ -93,17 +80,13 @@
     .r-warn { background:var(--warn-bg); } .r-warn .profit, .r-warn .rate, .r-warn .label { color:var(--warn); }
     .r-bad  { background:var(--bad-bg);  } .r-bad  .profit, .r-bad  .rate, .r-bad  .label  { color:var(--bad); }
     .note { font-size:12px; color:var(--muted); margin-top:18px; }
+    .db-badge { font-size:11px; color:var(--accent); background:var(--good-bg); padding:2px 8px; border-radius:20px; margin-left:8px; font-weight:600; }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 
 <body>
-  <!-- ===================================================================
-     공통 상단 메뉴 (네비게이션)
-     · 사용자 관리 / 로그아웃 버튼이 이제 메뉴 막대 오른쪽 안에 들어 있어요.
-       (예전처럼 화면에 따로 떠 있지 않습니다.)
-     · 버튼 id(adminBtn·logoutBtn)는 그대로라 로그인·관리자 로직은 동일하게 작동합니다.
-     =================================================================== -->
+  <!-- 공통 상단 메뉴 -->
   <div class="ssbon-nav">
     <div class="ssbon-nav-inner">
       <span class="ssbon-nav-brand"><i class="ssbon-nav-dot"></i>순수본 가격도구</span>
@@ -113,7 +96,6 @@
         <a href="channels.html" data-nav="channels.html">채널 마스터</a>
         <a href="freight.html" data-nav="freight.html">운반비 마스터</a>
       </nav>
-      <!-- 오른쪽 버튼 묶음 (로그인 통과 후에만 보임) -->
       <div class="ssbon-nav-right">
         <button id="adminBtn" class="ssbon-nav-btn primary" style="display:none;">사용자 관리</button>
         <button id="logoutBtn" class="ssbon-nav-btn" style="display:none;">로그아웃</button>
@@ -129,7 +111,6 @@
     .ssbon-nav-links a { text-decoration:none; font-size:14px; font-weight:600; color:#6b7770; padding:7px 13px; border-radius:8px; transition:.12s; }
     .ssbon-nav-links a:hover { background:#f0f3f0; color:#1d2620; }
     .ssbon-nav-links a.active { background:#e7f2ec; color:#2f7d4f; }
-    /* 오른쪽 버튼 묶음을 끝으로 밀고, 메뉴 막대 톤에 맞춤 */
     .ssbon-nav-right { margin-left:auto; display:flex; gap:8px; }
     .ssbon-nav-btn { font-family:inherit; font-size:12.5px; font-weight:600; padding:7px 13px; border-radius:8px; cursor:pointer; color:#2f7d4f; background:#fff; border:1px solid #e3e8e3; }
     .ssbon-nav-btn:hover { background:#f0f3f0; }
@@ -137,7 +118,6 @@
     .ssbon-nav-btn.primary:hover { opacity:.9; }
   </style>
   <script>
-    // 현재 페이지에 해당하는 메뉴를 자동으로 강조 표시
     (function () {
       var page = location.pathname.split("/").pop() || "index.html";
       document.querySelectorAll('.ssbon-nav-links a[data-nav]').forEach(function (a) {
@@ -146,7 +126,7 @@
     })();
   </script>
 
-  <!-- 로그인/승인 확인 게이트 (확인될 때까지 화면 전체를 덮음) -->
+  <!-- 로그인 게이트 -->
   <div id="authGate" style="position:fixed; inset:0; z-index:9999; background:#f4f1ea;
        display:flex; align-items:center; justify-content:center; text-align:center; padding:24px;">
     <div>
@@ -158,35 +138,34 @@
   </div>
 
   <script>
-    // 진입 관문: 로그인 + 활성(승인) 사용자만 통과
-    (function () {
-      const sb = window.supabase.createClient(
-        "https://ngvgzfhvjaowwhnmmpex.supabase.co",
-        "sb_publishable_Mxqz7HBIPJNp0UQUgjsmiA_lHSfCh-A"
-      );
-      async function logout(){ await sb.auth.signOut(); window.location.href = './index.html'; }
-      document.getElementById('logoutBtn').addEventListener('click', logout);
-      document.getElementById('gateBtn').addEventListener('click', logout);
-      document.getElementById('adminBtn').addEventListener('click', () => { window.location.href = './admin.html'; });
+    const SB_URL = "https://ngvgzfhvjaowwhnmmpex.supabase.co";
+    const SB_KEY = "sb_publishable_Mxqz7HBIPJNp0UQUgjsmiA_lHSfCh-A";
+    const sb = window.supabase.createClient(SB_URL, SB_KEY);
 
-      (async function guard(){
-        const { data: { session } } = await sb.auth.getSession();
-        if (!session) { window.location.href = './index.html'; return; }   // 로그인 안 됨 → 로그인 페이지
-        let p = null;
-        try {
-          const r = await sb.from('users').select('role,is_active,email').eq('id', session.user.id).single();
-          p = r.data;
-        } catch (e) {}
-        if (p && p.is_active && p.role !== 'pending') {
-          document.getElementById('authGate').style.display = 'none';      // 통과 → 게이트 제거
-          document.getElementById('logoutBtn').style.display = 'inline-block';
-          if (p.role === 'admin') document.getElementById('adminBtn').style.display = 'inline-block';  // 관리자만 사용자 관리 버튼
-        } else {
-          document.getElementById('gateMsg').textContent = '승인 대기 중입니다';
-          document.getElementById('gateSub').textContent = '관리자 승인이 완료되면 이용할 수 있습니다.';
-          document.getElementById('gateBtn').style.display = 'inline-block';
-        }
-      })();
+    async function logout(){ await sb.auth.signOut(); window.location.href = './index.html'; }
+    document.getElementById('logoutBtn').addEventListener('click', logout);
+    document.getElementById('gateBtn').addEventListener('click', logout);
+    document.getElementById('adminBtn').addEventListener('click', () => { window.location.href = './admin.html'; });
+
+    (async function guard(){
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session) { window.location.href = './index.html'; return; }
+      let p = null;
+      try {
+        const r = await sb.from('users').select('role,is_active,email').eq('id', session.user.id).single();
+        p = r.data;
+      } catch (e) {}
+      if (p && p.is_active && p.role !== 'pending') {
+        document.getElementById('authGate').style.display = 'none';
+        document.getElementById('logoutBtn').style.display = 'inline-block';
+        if (p.role === 'admin') document.getElementById('adminBtn').style.display = 'inline-block';
+        // 게이트 통과 후 DB에서 마스터 데이터 로드
+        loadAllMasters();
+      } else {
+        document.getElementById('gateMsg').textContent = '승인 대기 중입니다';
+        document.getElementById('gateSub').textContent = '관리자 승인이 완료되면 이용할 수 있습니다.';
+        document.getElementById('gateBtn').style.display = 'inline-block';
+      }
     })();
   </script>
 
@@ -197,54 +176,44 @@
       <p class="sub">상품·물류비 마스터에서 정보를 자동으로 가져와, 세 가격대의 이익과 운반비율을 비교합니다.</p>
     </header>
 
-    <!-- ========== 상품 마스터 ========== -->
+    <!-- 상품 마스터 -->
     <details class="panel master" open>
-      <summary>상품 마스터<span class="hint">상품을 고르면 품온·제조원가·입수·정상판매가가 자동으로 채워집니다</span></summary>
+      <summary>상품 마스터<span class="hint">상품을 고르면 품온·제조원가·입수·정상판매가가 자동으로 채워집니다</span><span class="db-badge" id="productBadge">DB 연결 중...</span></summary>
       <div class="bar">
         <div class="field">
           <label>상품 선택</label>
-          <select id="product"></select>
+          <select id="product"><option>불러오는 중...</option></select>
         </div>
-        <button type="button" id="saveProduct" class="mini-btn">현재 값 저장</button>
-        <button type="button" id="newProduct" class="mini-btn ghost">+ 새 상품</button>
       </div>
     </details>
 
-    <!-- ========== 물류비 마스터 ========== -->
+    <!-- 물류비 마스터 -->
     <details class="panel master">
-      <summary>물류비 마스터 (품온별)<span class="hint">위탁=박스당 운반비 / 직납=운반비율·유통사이익율</span></summary>
-      <table class="mtable">
+      <summary>물류비 마스터 (품온별)<span class="hint">위탁=박스당 운반비 / 직납=운반비율·유통사이익율</span><span class="db-badge" id="freightBadge">DB 연결 중...</span></summary>
+      <table style="width:100%; border-collapse:collapse; margin-top:14px; font-size:13px;">
         <thead>
-          <tr><th>품온</th><th>위탁 운반비 (원/박스)</th><th>직납 운반비율 (%)</th><th>직납 유통사이익율 (%)</th></tr>
+          <tr>
+            <th style="padding:8px; text-align:left; border-bottom:1px solid var(--line); color:var(--muted); font-size:11.5px; font-weight:600;">품온</th>
+            <th style="padding:8px; text-align:left; border-bottom:1px solid var(--line); color:var(--muted); font-size:11.5px; font-weight:600;">위탁 운반비 (원/박스)</th>
+            <th style="padding:8px; text-align:left; border-bottom:1px solid var(--line); color:var(--muted); font-size:11.5px; font-weight:600;">직납 운반비율 (%)</th>
+            <th style="padding:8px; text-align:left; border-bottom:1px solid var(--line); color:var(--muted); font-size:11.5px; font-weight:600;">직납 유통사이익율 (%)</th>
+          </tr>
         </thead>
-        <tbody>
-          <tr><td>실온</td>
-            <td><input type="number" id="amb_freight" value="6000" /></td>
-            <td><input type="number" id="amb_dRate" value="2" /></td>
-            <td><input type="number" id="amb_dDist" value="40" /></td></tr>
-          <tr><td>냉장</td>
-            <td><input type="number" id="chi_freight" value="9000" /></td>
-            <td><input type="number" id="chi_dRate" value="3" /></td>
-            <td><input type="number" id="chi_dDist" value="40" /></td></tr>
-          <tr><td>냉동</td>
-            <td><input type="number" id="fro_freight" value="12000" /></td>
-            <td><input type="number" id="fro_dRate" value="4" /></td>
-            <td><input type="number" id="fro_dDist" value="42" /></td></tr>
+        <tbody id="freightTableBody">
+          <tr><td colspan="4" style="padding:12px 8px; color:var(--muted); font-size:13px;">불러오는 중...</td></tr>
         </tbody>
       </table>
     </details>
 
-    <!-- ========== 판매처 · 품목 · 판관비 ========== -->
+    <!-- 판매처 · 품목 · 판관비 -->
     <section class="panel">
       <h2>판매처 · 품목 · 판관비</h2>
 
       <div class="bar">
         <div class="field">
           <label>판매처 선택 — 고르면 유형·판관비가 자동으로 채워집니다</label>
-          <select id="channel"></select>
+          <select id="channel"><option>불러오는 중...</option></select>
         </div>
-        <button type="button" id="saveChannel" class="mini-btn">현재 값 저장</button>
-        <button type="button" id="newChannel" class="mini-btn ghost">+ 새 판매처</button>
       </div>
 
       <div class="grid" style="margin-top:14px;">
@@ -264,18 +233,22 @@
 
       <p class="group-label">품목 정보 (상품 마스터에서 자동)</p>
       <div class="grid">
-        <div class="field"><label>제조원가 (원, VAT별도)</label><input type="number" id="cost" value="3000" /></div>
+        <div class="field"><label>제조원가 (원, VAT별도)</label><input type="number" id="cost" value="0" /></div>
         <div class="field">
           <label>품온 (운반비 자동 적용)</label>
-          <select id="temp"><option value="ambient">실온</option><option value="chilled">냉장</option><option value="frozen">냉동</option></select>
+          <select id="temp">
+            <option value="실온">실온</option>
+            <option value="냉장">냉장</option>
+            <option value="냉동">냉동</option>
+          </select>
         </div>
-        <div class="field"><label>입수 (박스당 EA수)</label><input type="number" id="packQty" value="20" /></div>
+        <div class="field"><label>입수 (박스당 EA수)</label><input type="number" id="packQty" value="1" /></div>
         <div class="field"><label>목표 운반비율 (%)</label><input type="number" id="targetFreightRate" value="8" /></div>
       </div>
 
       <p class="group-label">1. 직접 판관비</p>
       <div class="grid">
-        <div class="field"><label>지급수수료 (%)</label><input type="number" id="feeRate" value="30" /></div>
+        <div class="field"><label>지급수수료 (%)</label><input type="number" id="feeRate" value="0" /></div>
         <div class="field">
           <label>수수료 부과 기준</label>
           <select id="feeBase"><option value="supply">공급가 기준</option><option value="vat">VAT포함가 기준</option></select>
@@ -290,7 +263,7 @@
         </div>
         <div class="field">
           <label id="freightLabel">운반비 (원/박스)</label>
-          <input type="number" id="freight" value="6000" />
+          <input type="number" id="freight" value="0" />
           <p class="auto-hint">품온별 마스터에서 자동 적용 (수정 가능)</p>
         </div>
       </div>
@@ -299,20 +272,21 @@
       <div class="grid">
         <div class="field">
           <label>본부공통비</label>
-          <div class="combo"><select id="hqType"><option value="rate">정률 %</option><option value="fixed">정액 원</option></select><input type="number" id="hqValue" value="3" /></div>
+          <div class="combo"><select id="hqType"><option value="rate">정률 %</option><option value="fixed">정액 원</option></select><input type="number" id="hqValue" value="0" /></div>
         </div>
         <div class="field">
           <label>부문공통비</label>
-          <div class="combo"><select id="divType"><option value="rate">정률 %</option><option value="fixed">정액 원</option></select><input type="number" id="divValue" value="2" /></div>
+          <div class="combo"><select id="divType"><option value="rate">정률 %</option><option value="fixed">정액 원</option></select><input type="number" id="divValue" value="0" /></div>
         </div>
       </div>
     </section>
 
+    <!-- 3개 가격대 결과 -->
     <section class="tiers">
       <div class="tier" id="tier-normal">
         <div class="tier-head">정상판매가</div>
         <div class="tier-body">
-          <div class="price-input"><label>판매가 (원, VAT포함)</label><input type="number" id="priceNormal" value="10000" /></div>
+          <div class="price-input"><label>판매가 (원, VAT포함)</label><input type="number" id="priceNormal" value="0" /></div>
           <div class="rows" id="rows-normal"></div>
           <div class="result" id="result-normal"></div>
         </div>
@@ -348,6 +322,7 @@
   </div>
 
   <script>
+    // ── 계산/렌더링 헬퍼 ──
     function won(n){ return Math.round(n).toLocaleString('ko-KR') + '원'; }
     function pct(n){ return n.toFixed(1) + '%'; }
     function num(id){ return parseFloat(document.getElementById(id).value) || 0; }
@@ -355,25 +330,34 @@
     function setVal(id, v){ document.getElementById(id).value = v; }
     function byType(typeId, valueId, supply){ return (val(typeId)==='rate') ? supply*(num(valueId)/100) : num(valueId); }
 
-    const prefix = { ambient:'amb', chilled:'chi', frozen:'fro' };
-    function logi(field){ return num(prefix[val('temp')] + '_' + field); }
+    // ── 품온별 운반비 마스터 (DB에서 불러온 값을 여기 저장) ──
+    // 키: '실온' | '냉장' | '냉동'
+    let freightMaster = {
+      '실온': { consign_freight: 0, direct_rate: 0, direct_dist: 0 },
+      '냉장': { consign_freight: 0, direct_rate: 0, direct_dist: 0 },
+      '냉동': { consign_freight: 0, direct_rate: 0, direct_dist: 0 },
+    };
 
-    // 품온·채널유형으로 운반비/유통사이익율을 마스터에서 적용
+    // ── 품온·채널유형으로 운반비/유통사이익율 자동 적용 ──
     function applyLogistics(){
+      const temp   = val('temp');
       const direct = (val('chType') === 'direct');
+      const fm     = freightMaster[temp] || {};
+
       if (direct){
-        setVal('freight', logi('dRate'));      // 직납 운반비율(%)
-        setVal('distRate', logi('dDist'));     // 직납 유통사이익율(%)
+        setVal('freight',  fm.direct_rate  || 0);
+        setVal('distRate', fm.direct_dist  || 0);
         document.getElementById('freightLabel').textContent = '운반비율 (공급가 %)';
         document.getElementById('distField').style.display = '';
       } else {
-        setVal('freight', logi('freight'));    // 위탁 운반비(박스당 원)
+        setVal('freight', fm.consign_freight || 0);
         document.getElementById('freightLabel').textContent = '운반비 (원/박스)';
         document.getElementById('distField').style.display = 'none';
       }
       update();
     }
 
+    // ── 계산 ──
     function calc(price){
       const vatEx = price / 1.1;
       const direct = (val('chType') === 'direct');
@@ -386,23 +370,24 @@
       const fee = feeBaseAmt * (num('feeRate')/100);
       const ad     = byType('adType',    'adValue',    supply);
       const promo  = byType('promoType', 'promoValue', supply);
-      // 운반비: 위탁=박스운반비÷입수(EA당), 직납=공급가×운반비율%
+
       let freight;
       if (direct){ freight = supply * (num('freight')/100); }
       else { const pk = num('packQty') || 1; freight = num('freight') / pk; }
       const freightRate = supply > 0 ? freight/supply*100 : 0;
 
       const directProfit = supply - cost - (fee + ad + promo + freight);
-      const directRate = supply > 0 ? directProfit/supply*100 : 0;
+      const directRate   = supply > 0 ? directProfit/supply*100 : 0;
       const hq  = byType('hqType',  'hqValue',  supply);
       const div = byType('divType', 'divValue', supply);
       const opProfit = directProfit - (hq + div);
-      const opRate = supply > 0 ? opProfit/supply*100 : 0;
+      const opRate   = supply > 0 ? opProfit/supply*100 : 0;
 
       return { vatEx, direct, distRate, distProfit, supply, cost, fee, ad, promo,
                freight, freightRate, directProfit, directRate, hq, div, opProfit, opRate };
     }
 
+    // ── 렌더링 ──
     function render(tierKey, price){
       const r = calc(price);
       const target = num('targetFreightRate');
@@ -442,65 +427,174 @@
     function syncFromPrice(rateId, priceId){ const n=num('priceNormal'); setVal(rateId, (n>0 ? (1-num(priceId)/n)*100 : 0).toFixed(1)); }
     function update(){ render('normal', num('priceNormal')); render('always', num('priceAlways')); render('max', num('priceMax')); }
 
-    // ===== 상품 마스터 =====
-    const productFields = ['temp','cost','packQty','priceNormal','targetFreightRate'];
-    let products = [
-      { name:'실온 과자 (예시)', temp:'ambient', cost:3000, packQty:20, priceNormal:10000, targetFreightRate:8 },
-      { name:'냉장 반찬 (예시)', temp:'chilled', cost:4000, packQty:12, priceNormal:12000, targetFreightRate:10 },
-      { name:'냉동 만두 (예시)', temp:'frozen',  cost:5000, packQty:24, priceNormal:15000, targetFreightRate:10 },
-    ];
-    function refreshProductSelect(i){ const s=document.getElementById('product'); s.innerHTML=products.map((p,k)=>'<option value="'+k+'">'+p.name+'</option>').join(''); if(i!=null) s.value=i; }
-    function fillFromProduct(idx){
-      const p = products[idx];
-      productFields.forEach(f => setVal(f, p[f]));
-      applyLogistics();                       // 품온 반영 → 운반비 자동
-      syncFromRate('rateAlways','priceAlways'); syncFromRate('rateMax','priceMax');
+    // =====================================================
+    // DB 마스터 로드 함수들
+    // =====================================================
+
+    // 상품 마스터 로드 (products 테이블)
+    async function loadProducts(){
+      const { data, error } = await sb.from('products').select('*').order('name');
+      const sel = document.getElementById('product');
+      if (error || !data || data.length === 0){
+        sel.innerHTML = '<option value="">등록된 상품 없음 (상품 마스터에서 등록)</option>';
+        document.getElementById('productBadge').textContent = '상품 없음';
+        return;
+      }
+      sel.innerHTML = data.map(p => `<option value="${p.id}"
+        data-cost="${p.cost_price || 0}"
+        data-pack="${p.box_qty || 1}"
+        data-price="${p.normal_price || 0}"
+        data-temp="${p.temperature || '실온'}"
+        data-target="${p.target_freight_rate || 8}"
+      >${p.name}</option>`).join('');
+      document.getElementById('productBadge').textContent = `DB · ${data.length}개`;
+      // 첫 번째 상품 자동 선택
+      fillFromProductOption(sel.options[0]);
+    }
+
+    function fillFromProductOption(opt){
+      if (!opt || !opt.dataset.cost) return;
+      setVal('cost',               opt.dataset.cost);
+      setVal('packQty',            opt.dataset.pack);
+      setVal('priceNormal',        opt.dataset.price);
+      setVal('temp',               opt.dataset.temp);
+      setVal('targetFreightRate',  opt.dataset.target);
+      applyLogistics();
+      syncFromRate('rateAlways','priceAlways');
+      syncFromRate('rateMax','priceMax');
       update();
     }
-    function readInputsToProduct(name){
-      const p = { name:name };
-      productFields.forEach(f => { const el=document.getElementById(f); p[f]=(el.tagName==='SELECT')?el.value:(parseFloat(el.value)||0); });
-      return p;
-    }
-    document.getElementById('product').addEventListener('change', e => fillFromProduct(+e.target.value));
-    document.getElementById('saveProduct').addEventListener('click', () => {
-      const idx=+val('product'); products[idx]=readInputsToProduct(products[idx].name);
-      alert('"'+products[idx].name+'" 상품 정보를 저장했습니다.');
-    });
-    document.getElementById('newProduct').addEventListener('click', () => {
-      const name=prompt('새 상품 이름을 입력하세요'); if(!name) return;
-      products.push(readInputsToProduct(name)); refreshProductSelect(products.length-1);
-    });
 
-    // ===== 판매처 마스터 (운반비·유통사이익율은 물류비 마스터가 결정) =====
-    const channelFields = ['chType','feeRate','feeBase','adType','adValue','promoType','promoValue','hqType','hqValue','divType','divValue'];
-    let channels = [
-      { name:'기본 (위탁)',       chType:'consign', feeRate:30, feeBase:'supply', adType:'rate', adValue:0, promoType:'rate', promoValue:0, hqType:'rate', hqValue:3, divType:'rate', divValue:2 },
-      { name:'쿠팡 (위탁,예시)',   chType:'consign', feeRate:33, feeBase:'supply', adType:'rate', adValue:2, promoType:'rate', promoValue:3, hqType:'rate', hqValue:3, divType:'rate', divValue:2 },
-      { name:'직납마트 (직납,예시)', chType:'direct',  feeRate:0,  feeBase:'supply', adType:'rate', adValue:0, promoType:'rate', promoValue:0, hqType:'rate', hqValue:3, divType:'rate', divValue:2 },
-    ];
-    function refreshChannelSelect(i){ const s=document.getElementById('channel'); s.innerHTML=channels.map((c,k)=>'<option value="'+k+'">'+c.name+'</option>').join(''); if(i!=null) s.value=i; }
-    function fillFromChannel(idx){
-      const c = channels[idx];
-      channelFields.forEach(f => setVal(f, c[f]));
+    // 채널 마스터 로드 (channels 테이블)
+    async function loadChannels(){
+      const { data, error } = await sb.from('channels').select('*').eq('is_active', true).order('name');
+      const sel = document.getElementById('channel');
+      if (error || !data || data.length === 0){
+        sel.innerHTML = '<option value="">등록된 판매처 없음 (채널 마스터에서 등록)</option>';
+        return;
+      }
+      sel.innerHTML = data.map(c => `<option value="${c.id}"
+        data-chtype="${c.channel_type || 'consign'}"
+        data-feerate="${c.commission_rate || 0}"
+        data-feebase="${c.commission_base || 'supply'}"
+        data-adtype="${c.ad_type || 'rate'}"
+        data-advalue="${c.ad_value || 0}"
+        data-promotype="${c.promo_type || 'rate'}"
+        data-promovalue="${c.promo_value || 0}"
+        data-hqtype="${c.hq_cost_type || 'rate'}"
+        data-hqvalue="${c.hq_cost_value || 0}"
+        data-divtype="${c.div_cost_type || 'rate'}"
+        data-divvalue="${c.div_cost_value || 0}"
+      >${c.name}</option>`).join('');
+      // 첫 번째 채널 자동 선택
+      fillFromChannelOption(sel.options[0]);
+    }
+
+    function fillFromChannelOption(opt){
+      if (!opt || !opt.dataset.chtype) return;
+      setVal('chType',      opt.dataset.chtype);
+      setVal('feeRate',     opt.dataset.feerate);
+      setVal('feeBase',     opt.dataset.feebase);
+      setVal('adType',      opt.dataset.adtype);
+      setVal('adValue',     opt.dataset.advalue);
+      setVal('promoType',   opt.dataset.promotype);
+      setVal('promoValue',  opt.dataset.promovalue);
+      setVal('hqType',      opt.dataset.hqtype);
+      setVal('hqValue',     opt.dataset.hqvalue);
+      setVal('divType',     opt.dataset.divtype);
+      setVal('divValue',    opt.dataset.divvalue);
       applyLogistics();
     }
-    function readInputsToChannel(name){
-      const c = { name:name };
-      channelFields.forEach(f => { const el=document.getElementById(f); c[f]=(el.tagName==='SELECT')?el.value:(parseFloat(el.value)||0); });
-      return c;
+
+    // 운반비 마스터 로드
+    // logistics 테이블: 위탁 공통(channel_id=null) + 직납 채널별(channel_logistics 테이블)
+    async function loadFreightMaster(){
+      // 위탁 공통 운반비 (logistics 테이블, channel_id IS NULL)
+      const { data: consignData } = await sb
+        .from('logistics')
+        .select('*')
+        .is('channel_id', null);
+
+      // 직납 채널별 운반비 - 지금 선택된 채널 기준으로 가져옴
+      // 우선 위탁 마스터만 로드하고, 채널 변경 시 직납 값을 별도 로드
+
+      const tbody = document.getElementById('freightTableBody');
+      const temps = ['실온', '냉장', '냉동'];
+
+      if (consignData && consignData.length > 0){
+        // DB 데이터로 freightMaster 채우기
+        consignData.forEach(row => {
+          const t = row.temperature;
+          if (freightMaster[t]){
+            freightMaster[t].consign_freight = row.freight_amount || 0;
+          }
+        });
+        document.getElementById('freightBadge').textContent = 'DB 연결됨';
+      } else {
+        document.getElementById('freightBadge').textContent = '데이터 없음';
+      }
+
+      // 운반비 테이블 렌더링 (읽기 전용 표시용)
+      tbody.innerHTML = temps.map(t => {
+        const fm = freightMaster[t];
+        return `<tr>
+          <td style="padding:8px; font-weight:600;">${t}</td>
+          <td style="padding:8px; color:var(--muted);">${fm.consign_freight ? fm.consign_freight.toLocaleString()+'원' : '-'}</td>
+          <td style="padding:8px; color:var(--muted);">${fm.direct_rate ? fm.direct_rate+'%' : '-'}</td>
+          <td style="padding:8px; color:var(--muted);">${fm.direct_dist ? fm.direct_dist+'%' : '-'}</td>
+        </tr>`;
+      }).join('');
     }
-    document.getElementById('channel').addEventListener('change', e => fillFromChannel(+e.target.value));
-    document.getElementById('saveChannel').addEventListener('click', () => {
-      const idx=+val('channel'); channels[idx]=readInputsToChannel(channels[idx].name);
-      alert('"'+channels[idx].name+'" 판매처 값을 저장했습니다.');
-    });
-    document.getElementById('newChannel').addEventListener('click', () => {
-      const name=prompt('새 판매처 이름을 입력하세요'); if(!name) return;
-      channels.push(readInputsToChannel(name)); refreshChannelSelect(channels.length-1);
+
+    // 직납 채널 선택 시 해당 채널의 운반비율 가져오기
+    async function loadDirectFreight(channelId){
+      if (!channelId) return;
+      const { data } = await sb
+        .from('channel_logistics')
+        .select('*')
+        .eq('channel_id', channelId);
+
+      if (data && data.length > 0){
+        data.forEach(row => {
+          const t = row.temperature;
+          if (freightMaster[t]){
+            freightMaster[t].direct_rate = row.freight_rate || 0;
+            freightMaster[t].direct_dist = row.dist_rate    || 0;
+          }
+        });
+        // 현재 표시 중인 운반비 업데이트
+        applyLogistics();
+      }
+    }
+
+    // 모든 마스터 한 번에 로드
+    async function loadAllMasters(){
+      await Promise.all([
+        loadProducts(),
+        loadChannels(),
+        loadFreightMaster(),
+      ]);
+      // 초기 계산
+      syncFromRate('rateAlways','priceAlways');
+      syncFromRate('rateMax','priceMax');
+      update();
+    }
+
+    // ── 이벤트 연결 ──
+    document.getElementById('product').addEventListener('change', e => {
+      const opt = e.target.options[e.target.selectedIndex];
+      fillFromProductOption(opt);
     });
 
-    // ===== 입력 변화 → 재계산 =====
+    document.getElementById('channel').addEventListener('change', e => {
+      const opt = e.target.options[e.target.selectedIndex];
+      fillFromChannelOption(opt);
+      // 직납 채널이면 해당 채널의 운반비율 DB에서 로드
+      if (opt.dataset.chtype === 'direct'){
+        loadDirectFreight(e.target.value);
+      }
+    });
+
     ['cost','packQty','targetFreightRate','feeRate','feeBase','adType','adValue','promoType','promoValue',
      'freight','distRate','hqType','hqValue','divType','divValue','priceNormal']
       .forEach(id => document.getElementById(id).addEventListener('input', () => {
@@ -508,21 +602,10 @@
       }));
     document.getElementById('temp').addEventListener('change', applyLogistics);
     document.getElementById('chType').addEventListener('change', applyLogistics);
-    ['amb_freight','amb_dRate','amb_dDist','chi_freight','chi_dRate','chi_dDist','fro_freight','fro_dRate','fro_dDist']
-      .forEach(id => document.getElementById(id).addEventListener('input', applyLogistics));
     document.getElementById('rateAlways').addEventListener('input', () => { syncFromRate('rateAlways','priceAlways'); update(); });
     document.getElementById('priceAlways').addEventListener('input', () => { syncFromPrice('rateAlways','priceAlways'); update(); });
     document.getElementById('rateMax').addEventListener('input', () => { syncFromRate('rateMax','priceMax'); update(); });
     document.getElementById('priceMax').addEventListener('input', () => { syncFromPrice('rateMax','priceMax'); update(); });
-
-    // [시작]
-    refreshProductSelect(0);
-    refreshChannelSelect(0);
-    fillFromChannel(0);
-    fillFromProduct(0);
-    syncFromRate('rateAlways','priceAlways');
-    syncFromRate('rateMax','priceMax');
-    update();
   </script>
 </body>
 </html>
