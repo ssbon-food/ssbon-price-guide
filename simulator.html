@@ -441,7 +441,7 @@
         return;
       }
       sel.innerHTML = data.map(p => `<option value="${p.id}"
-        data-cost="${p.cost_price || 0}"
+        data-cost="${p.cost || 0}"
         data-pack="${p.box_qty || 1}"
         data-price="${p.normal_price || 0}"
         data-temp="${p.temperature || '실온'}"
@@ -479,12 +479,12 @@
         data-feebase="${c.commission_base || 'supply'}"
         data-adtype="${c.ad_type || 'rate'}"
         data-advalue="${c.ad_value || 0}"
-        data-promotype="${c.promo_type || 'rate'}"
-        data-promovalue="${c.promo_value || 0}"
-        data-hqtype="${c.hq_cost_type || 'rate'}"
-        data-hqvalue="${c.hq_cost_value || 0}"
-        data-divtype="${c.div_cost_type || 'rate'}"
-        data-divvalue="${c.div_cost_value || 0}"
+        data-promotype="${c.promotion_type || 'rate'}"
+        data-promovalue="${c.promotion_value || 0}"
+        data-hqtype="${c.hq_type || 'rate'}"
+        data-hqvalue="${c.hq_value || 0}"
+        data-divtype="${c.div_type || 'rate'}"
+        data-divvalue="${c.div_value || 0}"
       >${c.name}</option>`).join('');
       // 첫 번째 채널 자동 선택
       fillFromChannelOption(sel.options[0]);
@@ -509,24 +509,20 @@
     // 운반비 마스터 로드
     // logistics 테이블: 위탁 공통(channel_id=null) + 직납 채널별(channel_logistics 테이블)
     async function loadFreightMaster(){
-      // 위탁 공통 운반비 (logistics 테이블, channel_id IS NULL)
+      // 위탁 공통 운반비 (logistics 테이블 전체)
       const { data: consignData } = await sb
         .from('logistics')
-        .select('*')
-        .is('channel_id', null);
-
-      // 직납 채널별 운반비 - 지금 선택된 채널 기준으로 가져옴
-      // 우선 위탁 마스터만 로드하고, 채널 변경 시 직납 값을 별도 로드
+        .select('temperature, consign_freight')
+        .eq('is_active', true);
 
       const tbody = document.getElementById('freightTableBody');
       const temps = ['실온', '냉장', '냉동'];
 
       if (consignData && consignData.length > 0){
-        // DB 데이터로 freightMaster 채우기
         consignData.forEach(row => {
-          const t = row.temperature;
+          const t = row.temperature;  // DB값: 실온/냉장/냉동
           if (freightMaster[t]){
-            freightMaster[t].consign_freight = row.freight_amount || 0;
+            freightMaster[t].consign_freight = row.consign_freight || 0;
           }
         });
         document.getElementById('freightBadge').textContent = 'DB 연결됨';
