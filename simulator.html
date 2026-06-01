@@ -391,8 +391,8 @@
   const comma = n => Number(n||0).toLocaleString('ko-KR');
   const numV = id => parseFloat($(id).value)||0;
 
-  $('logoutBtn').addEventListener('click', async()=>{ await sb.auth.signOut(); location.href='./index.html'; });
-  $('gateBtn').addEventListener('click',   async()=>{ await sb.auth.signOut(); location.href='./index.html'; });
+  
+  
   );
 
   (async function guard(){
@@ -403,7 +403,6 @@
     if (p && p.is_active && p.role!=='pending'){
       me = p; canEdit = (p.role==='master'||p.role==='admin');
       $('authGate').style.display='none'; $('app').style.display='block';
-      $('logoutBtn').style.display='inline-block';
       initNav(p);
       if(canEdit) $('btn-apply').style.display='inline-block';
       await loadAllMasters();
