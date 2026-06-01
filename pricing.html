@@ -308,11 +308,12 @@
 
     channels.forEach(c=>{
       ['정상판매가','상시할인가','최대할인가'].forEach((label,i)=>{
-        const borderL = i===0 ? 'border-left:2px solid var(--line);' : '';
+        const borderL = i===0 ? 'border-left:2px solid var(--line);' : 'border-left:1px solid var(--line);';
         const borderR = i===2 ? 'border-right:2px solid var(--line);' : '';
-        html += `<th style="${borderL}font-size:10.5px;">${label}<br><span style="font-weight:400;">(EA)</span></th>
-                 <th style="font-size:10.5px;">${label}<br><span style="font-weight:400;">(총)</span></th>
-                 <th style="${borderR}font-size:10.5px;">이익률</th>`;
+        const bg = i===0 ? 'background:#f0f7f2;' : i===1 ? 'background:#f0f4f9;' : 'background:#fdf0f0;';
+        html += `<th style="${borderL}${bg}font-size:10.5px;">개당가 (원)</th>
+                 <th style="${bg}font-size:10.5px;">판매가 (원)</th>
+                 <th style="${borderR}${bg}font-size:10.5px;">이익률</th>`;
       });
     });
     html += `</tr></thead><tbody>`;
@@ -356,17 +357,17 @@
             const borderR = 'border-right:2px solid var(--line);';
 
             // 정상판매가
-            html += `<td style="border-left:2px solid var(--line);">${eaNp?comma(eaNp)+'원':'-'}</td>
-                     <td>${unit.normal_price?comma(unit.normal_price)+'원':'-'}</td>
-                     <td>${rn?badge(rn.opRate):'-'}</td>`;
+            html += `<td style="border-left:2px solid var(--line);background:#fafdf9;">${eaNp?comma(eaNp)+'원':'-'}</td>
+                     <td style="background:#fafdf9;">${unit.normal_price?comma(unit.normal_price)+'원':'-'}</td>
+                     <td style="background:#fafdf9;">${rn?badge(rn.opRate):'-'}</td>`;
             // 상시할인가
-            html += `<td>${eaAp?comma(eaAp)+'원':'-'}</td>
-                     <td>${unit.always_price?comma(unit.always_price)+'원':'-'}</td>
-                     <td>${ra?badge(ra.opRate):'-'}</td>`;
+            html += `<td style="border-left:1px solid var(--line);background:#f7f9fd;">${eaAp?comma(eaAp)+'원':'-'}</td>
+                     <td style="background:#f7f9fd;">${unit.always_price?comma(unit.always_price)+'원':'-'}</td>
+                     <td style="background:#f7f9fd;">${ra?badge(ra.opRate):'-'}</td>`;
             // 최대할인가
-            html += `<td>${eaMp?comma(eaMp)+'원':'-'}</td>
-                     <td>${unit.max_price?comma(unit.max_price)+'원':'-'}</td>
-                     <td style="${borderR}">${rm?badge(rm.opRate):'-'}</td>`;
+            html += `<td style="border-left:1px solid var(--line);background:#fdf9f9;">${eaMp?comma(eaMp)+'원':'-'}</td>
+                     <td style="background:#fdf9f9;">${unit.max_price?comma(unit.max_price)+'원':'-'}</td>
+                     <td style="${borderR}background:#fdf9f9;">${rm?badge(rm.opRate):'-'}</td>`;
           });
           html += `</tr>`;
         });
