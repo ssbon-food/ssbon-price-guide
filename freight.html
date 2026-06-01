@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<!--
+  =====================================================================
+  순수본 식품본부 · 운반비 마스터 (freight.html)
+  - 위쪽: 위탁 운반비 (품온별, 모든 위탁채널 공통)  → logistics.consign_freight
+  - 아래: 직납 채널별 (채널 × 품온) 운반비율·유통사이익율 → channel_logistics
+  - 권한: master/admin 만 편집 가능, 그 외에는 조회만
+  =====================================================================
+-->
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>운반비 마스터 · 순수본 식품본부</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    :root {
+      --bg:#f4f6f3; --panel:#ffffff; --ink:#1d2620; --muted:#6b7770; --line:#e3e8e3;
+      --accent:#2f7d4f; --accent-soft:#e7f2ec; --warn:#b4441f;
+      --radius:12px; --shadow:0 1px 2px rgba(20,40,30,.05), 0 8px 24px rgba(20,40,30,.06);
+    }
+    * { box-sizing:border-box; }
+    html, body { margin:0; padding:0; }
+    body { font-family:"Pretendard", -apple-system, "Malgun Gothic", sans-serif; background:var(--bg); color:var(--ink); font-size:15px; line-height:1.5; }
+
+    /* 공통 상단 메뉴 */
+    .ssbon-nav { background:#fff; border-bottom:1px solid var(--line); }
+    .ssbon-nav-inner { max-width:920px; margin:0 auto; padding:0 18px; min-height:48px; display:flex; align-items:center; gap:20px; flex-wrap:wrap; }
+    .ssbon-nav-brand { display:flex; align-items:center; gap:7px; font-size:13px; font-weight:700; color:var(--ink); white-space:nowrap; }
+    .ssbon-nav-dot { width:8px; height:8px; border-radius:50%; background:var(--accent); display:inline-block; }
+    .ssbon-nav-links { display:flex; gap:6px; flex-wrap:wrap; }
+    .ssbon-nav-links a { text-decoration:none; font-size:14px; font-weight:600; color:var(--muted); padding:7px 13px; border-radius:8px; transition:.12s; }
+    .ssbon-nav-links a:hover { background:#f0f3f0; color:var(--ink); }
+    .ssbon-nav-links a.active { background:var(--accent-soft); color:var(--accent); }
+
+    header { background:var(--panel); border-bottom:1px solid var(--line); padding:14px 22px; display:flex; align-items:center; justify-content:space-between; gap:16px; }
+    .brand h1 { font-size:17px; margin:0; font-weight:700; letter-spacing:-.2px; }
+    .brand small { color:var(--muted); font-weight:500; }
+    .who { display:flex; align-items:center; gap:12px; font-size:13px; color:var(--muted); }
+    .role-badge { background:var(--accent-soft); color:var(--accent); padding:3px 9px; border-radius:999px; font-weight:600; font-size:12px; }
+
+    main { max-width:920px; margin:24px auto; padding:0 18px; display:flex; flex-direction:column; gap:22px; }
+
+    .card { background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); padding:20px 22px; }
+    .card-title { font-size:16px; font-weight:700; margin:0 0 4px; }
+    .card-sub { font-size:12.5px; color:var(--muted); margin:0 0 16px; }
+
+    .mtable { width:100%; border-collapse:collapse; }
+    .mtable th { text-align:left; font-size:12.5px; color:var(--muted); font-weight:600; padding:8px 10px; border-bottom:1px solid var(--line); }
+    .mtable td { padding:8px 10px; border-bottom:1px solid var(--line); font-size:14px; }
+    .mtable tr:last-child td { border-bottom:none; }
+    .mtable td:first-child, .mtable th:first-child { font-weight:600; width:90px; }
+    .mtable th.num, .mtable td.num { text-align:right; }
+    .mtable input { width:100%; max-width:180px; font-family:inherit; font-size:14px; padding:8px 10px; border:1px solid var(--line); border-radius:8px; background:#fff; color:var(--ink); text-align:right; }
+    .mtable input:focus { outline:none; border-color:var(--accent); }
+    .mtable input:disabled { background:#f4f6f3; color:var(--muted); }
+
+    .pick { display:flex; align-items:center; gap:10px; margin-bottom:14px; flex-wrap:wrap; }
+    .pick select { font-family:inherit; font-size:14px; padding:9px 12px; border:1px solid var(--line); border-radius:9px; background:#fff; min-width:220px; }
+    .pick select:focus { outline:none; border-color:var(--accent); }
+    .type-pill { font-size:12px; padding:2px 8px; border-radius:6px; background:var(--accent-soft); color:var(--accent); font-weight:600; }
+
+    .save-row { display:flex; justify-content:flex-end; align-items:center; gap:12px; margin-top:14px; }
+    .saved-msg { font-size:13px; color:var(--accent); font-weight:600; opacity:0; transition:opacity .2s; }
+    .saved-msg.show { opacity:1; }
+
+    button { font-family:inherit; cursor:pointer; border:none; border-radius:10px; font-size:14px; font-weight:600; padding:10px 16px; transition:.12s; }
+    .btn-primary { background:var(--accent); color:#fff; }
+    .btn-primary:hover { background:#266a42; }
+    .btn-primary:disabled { background:#b9c7bf; cursor:default; }
+    .btn-ghost { background:var(--panel); color:var(--ink); border:1px solid var(--line); }
+    .btn-ghost:hover { background:#f0f3f0; }
+    .btn-sm { padding:6px 12px; font-size:13px; }
+
+    .hint-box { font-size:13.5px; color:var(--muted); padding:14px; background:#fafbfa; border:1px dashed var(--line); border-radius:10px; }
+
+    .gate { max-width:420px; margin:80px auto; text-align:center; padding:0 20px; }
+    .gate .icon { font-size:40px; }
+    .gate h2 { margin:14px 0 8px; }
+    .gate p { color:var(--muted); margin:0 0 20px; }
+  </style>
+</head>
+
+<body>
+  <!-- 공통 상단 메뉴 -->
+  <div class="ssbon-nav">
+    <div class="ssbon-nav-inner">
+      <span class="ssbon-nav-brand"><i class="ssbon-nav-dot"></i>순수본 가격도구</span>
+      <nav class="ssbon-nav-links">
+        <a href="simulator.html" data-nav="simulator.html">가격 시뮬레이터</a>
+        <a href="products.html" data-nav="products.html">상품 마스터</a>
+        <a href="channels.html" data-nav="channels.html">채널 마스터</a>
+        <a href="freight.html" data-nav="freight.html">운반비 마스터</a>
+      </nav>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var page = location.pathname.split("/").pop() || "index.html";
+      document.querySelectorAll('.ssbon-nav-links a[data-nav]').forEach(function (a) {
+        if (a.getAttribute("data-nav") === page) a.classList.add("active");
+      });
+    })();
+  </script>
+
+  <!-- 게이트 -->
+  <div id="gate" class="gate" style="display:none;">
+    <div class="icon" id="gate-icon">🔒</div>
+    <h2 id="gate-title">확인 중…</h2>
+    <p id="gate-msg"></p>
+    <button class="btn-primary" id="gate-btn" style="display:none;"></button>
+  </div>
+
+  <!-- 앱 -->
+  <div id="app" style="display:none;">
+    <header>
+      <div class="brand"><h1>운반비 마스터 <small>· 순수본 식품본부</small></h1></div>
+      <div class="who">
+        <span id="who-name"></span>
+        <span class="role-badge" id="who-role"></span>
+        <button class="btn-ghost btn-sm" id="btn-logout">로그아웃</button>
+      </div>
+    </header>
+
+    <main>
+      <!-- (1) 위탁 운반비 -->
+      <div class="card">
+        <h2 class="card-title">위탁 운반비 (전 위탁채널 공통)</h2>
+        <p class="card-sub">박스당 운반비예요. 모든 위탁채널이 이 값을 함께 사용합니다.</p>
+        <table class="mtable">
+          <thead><tr><th>품온</th><th class="num">운반비 (원/박스)</th></tr></thead>
+          <tbody>
+            <tr><td>실온</td><td class="num"><input id="cf-amb" type="number" step="any" /></td></tr>
+            <tr><td>냉장</td><td class="num"><input id="cf-chi" type="number" step="any" /></td></tr>
+            <tr><td>냉동</td><td class="num"><input id="cf-fro" type="number" step="any" /></td></tr>
+          </tbody>
+        </table>
+        <div class="save-row">
+          <span class="saved-msg" id="consign-saved">저장됐어요</span>
+          <button class="btn-primary" id="btn-save-consign">위탁 운반비 저장</button>
+        </div>
+      </div>
+
+      <!-- (2) 직납 채널별 -->
+      <div class="card">
+        <h2 class="card-title">직납 채널별 운반비·유통사이익율</h2>
+        <p class="card-sub">직납채널을 고르면 그 채널의 품온별 값을 편집할 수 있어요.</p>
+
+        <div id="direct-empty" class="hint-box" style="display:none;">
+          등록된 직납채널이 없어요. 먼저 <b>채널 마스터</b>에서 직납채널을 등록해 주세요.
+        </div>
+
+        <div id="direct-area" style="display:none;">
+          <div class="pick">
+            <label style="font-size:13px;color:var(--muted);font-weight:600;">직납 채널</label>
+            <select id="dchannel"></select>
+          </div>
+          <table class="mtable">
+            <thead><tr><th>품온</th><th class="num">운반비율 (%)</th><th class="num">유통사이익율 (%)</th></tr></thead>
+            <tbody>
+              <tr><td>실온</td><td class="num"><input id="fr-amb" type="number" step="any" /></td><td class="num"><input id="dr-amb" type="number" step="any" /></td></tr>
+              <tr><td>냉장</td><td class="num"><input id="fr-chi" type="number" step="any" /></td><td class="num"><input id="dr-chi" type="number" step="any" /></td></tr>
+              <tr><td>냉동</td><td class="num"><input id="fr-fro" type="number" step="any" /></td><td class="num"><input id="dr-fro" type="number" step="any" /></td></tr>
+            </tbody>
+          </table>
+          <div class="save-row">
+            <span class="saved-msg" id="direct-saved">저장됐어요</span>
+            <button class="btn-primary" id="btn-save-direct">직납 값 저장</button>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    // =================================================================
+    //  0. Supabase 연결 (다른 페이지와 동일 값으로 미리 채움)
+    // =================================================================
+    const SUPABASE_URL = "https://ngvgzfhvjaowwhnmmpex.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ndmd6Zmh2amFvd3dobm1tcGV4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMzgyNjQsImV4cCI6MjA5NTYxNDI2NH0.jO5Ab8trHPyamHhYFXi9UWvQ217pDJW9qplBWph8cgg";
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // 품온 3종 (화면 표시값 ↔ 입력칸 id 접미사)
+    const TEMPS = [{ ko: "실온", id: "amb" }, { ko: "냉장", id: "chi" }, { ko: "냉동", id: "fro" }];
+
+    let me = null;
+    let canEdit = false;
+    let consignRows = {};   // 품온 → logistics 행 {id, consign_freight}
+    let directChannels = []; // 직납 채널 목록
+
+    const $ = (id) => document.getElementById(id);
+    const numVal = (id) => parseFloat($(id).value) || 0;
+
+    // =================================================================
+    //  1. 시작: 로그인·권한 확인
+    // =================================================================
+    async function init() {
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session) return showGate("🔒", "로그인이 필요해요", "먼저 로그인 페이지에서 로그인해 주세요.", "로그인하러 가기", goLogin);
+
+      const { data, error } = await sb.from("users").select("*").eq("id", session.user.id).single();
+      if (error || !data) return showGate("⚠️", "사용자 정보를 찾을 수 없어요", "관리자에게 계정 등록을 요청해 주세요.", "로그아웃", logout);
+      me = data;
+      if (me.role === "pending" || me.is_active === false) return showGate("⏳", "승인 대기 중이에요", "관리자가 승인하면 사용할 수 있어요.", "로그아웃", logout);
+
+      canEdit = (me.role === "master" || me.role === "admin");
+      showApp();
+      await loadConsign();
+      await loadDirectChannels();
+      applyPermission();
+    }
+
+    // =================================================================
+    //  2. 화면 전환
+    // =================================================================
+    function showGate(icon, title, msg, btnText, btnFn) {
+      $("app").style.display = "none";
+      $("gate").style.display = "block";
+      $("gate-icon").textContent = icon;
+      $("gate-title").textContent = title;
+      $("gate-msg").textContent = msg;
+      const b = $("gate-btn");
+      if (btnText) { b.style.display = "inline-block"; b.textContent = btnText; b.onclick = btnFn; }
+      else { b.style.display = "none"; }
+    }
+    function showApp() {
+      $("gate").style.display = "none";
+      $("app").style.display = "block";
+      $("who-name").textContent = me.name || me.email || "사용자";
+      $("who-role").textContent = me.role;
+    }
+    function goLogin() { location.href = "index.html"; }
+    async function logout() { await sb.auth.signOut(); goLogin(); }
+
+    // 권한 없으면 입력칸 잠그고 저장 버튼 숨김 (RLS가 한 번 더 막아주지만 화면에서도 막음)
+    function applyPermission() {
+      if (canEdit) return;
+      document.querySelectorAll(".mtable input").forEach((el) => (el.disabled = true));
+      $("btn-save-consign").style.display = "none";
+      $("btn-save-direct").style.display = "none";
+    }
+
+    // =================================================================
+    //  3. 위탁 운반비 불러오기 / 저장
+    // =================================================================
+    async function loadConsign() {
+      const { data, error } = await sb.from("logistics").select("id,temperature,consign_freight");
+      if (error) { alert("위탁 운반비를 불러오지 못했어요: " + error.message); return; }
+      consignRows = {};
+      (data || []).forEach((r) => { if (!consignRows[r.temperature]) consignRows[r.temperature] = r; });
+      TEMPS.forEach((t) => { $("cf-" + t.id).value = consignRows[t.ko] ? (consignRows[t.ko].consign_freight ?? 0) : 0; });
+    }
+
+    async function saveConsign() {
+      $("btn-save-consign").disabled = true;
+      for (const t of TEMPS) {
+        const value = numVal("cf-" + t.id);
+        const row = consignRows[t.ko];
+        let res;
+        if (row) {
+          // 이미 있는 품온 행이면 값만 갱신
+          res = await sb.from("logistics").update({ consign_freight: value, updated_by: me.id, updated_at: new Date().toISOString() }).eq("id", row.id);
+        } else {
+          // 행이 없으면 새로 만들기 (packaging_type은 기본값 '기본'이 들어감)
+          res = await sb.from("logistics").insert({ temperature: t.ko, consign_freight: value, created_by: me.id, updated_by: me.id });
+        }
+        if (res.error) { alert("저장 실패: " + res.error.message); $("btn-save-consign").disabled = false; return; }
+      }
+      await loadConsign();
+      flash("consign-saved");
+      $("btn-save-consign").disabled = false;
+    }
+
+    // =================================================================
+    //  4. 직납 채널 목록 / 선택 채널 값 불러오기 / 저장
+    // =================================================================
+    async function loadDirectChannels() {
+      const { data, error } = await sb.from("channels")
+        .select("id,name,channel_type,is_active").eq("channel_type", "direct").order("name", { ascending: true });
+      if (error) { alert("채널을 불러오지 못했어요: " + error.message); return; }
+      directChannels = (data || []).filter((c) => c.is_active !== false);
+
+      if (directChannels.length === 0) {
+        $("direct-empty").style.display = "block";
+        $("direct-area").style.display = "none";
+        return;
+      }
+      $("direct-empty").style.display = "none";
+      $("direct-area").style.display = "block";
+
+      const sel = $("dchannel");
+      sel.innerHTML = "";
+      directChannels.forEach((c) => {
+        const opt = document.createElement("option");
+        opt.value = c.id;
+        opt.textContent = c.name;
+        sel.appendChild(opt);
+      });
+      await loadDirectRows();  // 첫 채널 값 표시
+    }
+
+    async function loadDirectRows() {
+      const cid = +$("dchannel").value;
+      const { data, error } = await sb.from("channel_logistics").select("*").eq("channel_id", cid);
+      if (error) { alert("직납 값을 불러오지 못했어요: " + error.message); return; }
+      const map = {};
+      (data || []).forEach((r) => { map[r.temperature] = r; });
+      TEMPS.forEach((t) => {
+        $("fr-" + t.id).value = map[t.ko] ? (map[t.ko].freight_rate ?? 0) : 0;
+        $("dr-" + t.id).value = map[t.ko] ? (map[t.ko].dist_rate ?? 0) : 0;
+      });
+    }
+
+    async function saveDirect() {
+      const cid = +$("dchannel").value;
+      if (!cid) { alert("먼저 직납 채널을 선택해 주세요."); return; }
+      $("btn-save-direct").disabled = true;
+
+      // 3개 품온 줄을 한 번에 upsert (채널+품온 조합이 있으면 갱신, 없으면 추가)
+      const rows = TEMPS.map((t) => ({
+        channel_id: cid,
+        temperature: t.ko,
+        freight_rate: numVal("fr-" + t.id),
+        dist_rate: numVal("dr-" + t.id),
+        updated_by: me.id,
+        updated_at: new Date().toISOString(),
+      }));
+
+      const { error } = await sb.from("channel_logistics").upsert(rows, { onConflict: "channel_id,temperature" });
+      if (error) { alert("저장 실패: " + error.message); $("btn-save-direct").disabled = false; return; }
+
+      flash("direct-saved");
+      $("btn-save-direct").disabled = false;
+    }
+
+    // 저장됐어요 메시지 잠깐 보이기
+    function flash(id) {
+      const el = $(id);
+      el.classList.add("show");
+      setTimeout(() => el.classList.remove("show"), 1800);
+    }
+
+    // =================================================================
+    //  5. 버튼 연결 + 시작
+    // =================================================================
+    $("btn-save-consign").onclick = saveConsign;
+    $("btn-save-direct").onclick = saveDirect;
+    $("btn-logout").onclick = logout;
+    $("dchannel").addEventListener("change", loadDirectRows);
+
+    init();
+  </script>
+</body>
+</html>
