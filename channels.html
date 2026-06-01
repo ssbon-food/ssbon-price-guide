@@ -318,8 +318,6 @@
   }
   function showApp(){
     $("gate").style.display="none"; $("app").style.display="block";
-    $("who-name").textContent=me.name||me.email||"사용자";
-    $("who-role").textContent=me.role;
     $("btn-new").style.display=canEdit?"inline-block":"none";
   }
   function goLogin(){location.href="index.html";}
@@ -501,7 +499,6 @@
   $("btn-new").onclick=()=>openModal(null);
   $("btn-cancel").onclick=closeModal;
   $("btn-save").onclick=saveChannel;
-  $("btn-logout").onclick=logout;
   $("search").addEventListener("input",renderTable);
   $("show-inactive").addEventListener("change",renderTable);
   $("overlay").addEventListener("click",e=>{if(e.target.id==="overlay")closeModal();});
