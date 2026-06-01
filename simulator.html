@@ -516,19 +516,18 @@
     $('promoType').value  = currentChannel.promotion_type||'rate'; $('promoValue').value = currentChannel.promotion_value||0;
     $('hqType').value     = currentChannel.hq_type||'rate'; $('hqValue').value    = currentChannel.hq_value||0;
     $('divType').value    = currentChannel.div_type||'rate'; $('divValue').value   = currentChannel.div_value||0;
-    $('disp-chtype').value  = currentChannel.channel_type==='direct'?'직납채널':'위탁채널';
     $('disp-feebase').value = currentChannel.commission_base==='vat'?'VAT포함가':'공급가';
     const distBox = $('dist-box');
     if (currentChannel.channel_type==='direct'){
       await loadDirectFreight(currentChannel.id);
-      const temp = currentProduct?.temperature||'실온';
+      const temp = currentProduct?.temperature||$('disp-temp').value||'실온';
       const fm = freightMaster[temp];
       distBox.style.display='block';
       distBox.textContent=`직납 · 유통사이익율 ${fm.dDist}% · 운반비율 ${fm.dRate}% (${temp})`;
       $('disp-freight2').value = fm.dRate+'% (직납)';
     } else {
       distBox.style.display='none';
-      const temp = currentProduct?.temperature||'실온';
+      const temp = currentProduct?.temperature||$('disp-temp').value||'실온';
       $('disp-freight2').value = comma(freightMaster[temp].consign)+'원/박스';
     }
     renderResultTable();
