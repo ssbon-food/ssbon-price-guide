@@ -209,10 +209,7 @@
   const $ = id => document.getElementById(id);
   const comma = n => Number(Math.round(n)||0).toLocaleString('ko-KR');
   const pct = n => n.toFixed(1)+'%';
-
-   location.href='./index.html'; });
   $('gateBtn').addEventListener('click',   async()=>{ await sb.auth.signOut(); location.href='./index.html'; });
-   });
 
   (async function guard(){
     const { data:{ session } } = await sb.auth.getSession();
