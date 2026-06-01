@@ -257,8 +257,7 @@
       $("gate").style.display = "none";
       $("app").style.display = "block";
       $("who-name").textContent = me.name || me.email || "사용자";
-      $("who-role").textContent = me.role;
-    }
+      }
     function goLogin() { location.href = "index.html"; }
     async function logout() { await sb.auth.signOut(); goLogin(); }
 
@@ -375,7 +374,6 @@
     // =================================================================
     $("btn-save-consign").onclick = saveConsign;
     $("btn-save-direct").onclick = saveDirect;
-    $("btn-logout").onclick = logout;
     $("dchannel").addEventListener("change", loadDirectRows);
 
     init();
