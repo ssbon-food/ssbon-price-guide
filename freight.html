@@ -256,7 +256,7 @@
     function showApp() {
       $("gate").style.display = "none";
       $("app").style.display = "block";
-      $("who-name").textContent = me.name || me.email || "사용자";
+      initNav(me);
       }
     function goLogin() { location.href = "index.html"; }
     async function logout() { await sb.auth.signOut(); goLogin(); }
