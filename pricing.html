@@ -14,6 +14,7 @@
       --caution:#9a7b1f; --caution-bg:#f6efd8;
       --bad:#b4452f; --bad-bg:#f6e2dc;
       --radius:12px; --shadow:0 1px 2px rgba(20,40,30,.05),0 8px 24px rgba(20,40,30,.06);
+      --fix-w: 350px; /* 고정 컬럼 총 너비: 상품명220 + 품온50 + 원가80 */
     }
     *{box-sizing:border-box;margin:0;padding:0;}
     body{font-family:"Pretendard",-apple-system,"Malgun Gothic",sans-serif;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.5;}
@@ -33,7 +34,6 @@
 
     .page-wrap{max-width:1400px;margin:0 auto;padding:14px 18px 60px;}
 
-    /* 필터 바 */
     .filter-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:12px 16px;box-shadow:var(--shadow);}
     .filter-bar label{font-size:12px;font-weight:600;color:var(--muted);white-space:nowrap;}
     .filter-bar select{font-family:inherit;font-size:13px;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:#fafbfa;color:var(--ink);}
@@ -45,44 +45,30 @@
     .badge-sm.caution{background:var(--caution-bg);color:var(--caution);}
     .badge-sm.bad{background:var(--bad-bg);color:var(--bad);}
 
-    /* 엑셀형 테이블 */
-    .table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--panel);box-shadow:var(--shadow);isolation:isolate;}
-    table.policy-table{width:100%;border-collapse:collapse;font-size:12.5px;min-width:1200px;border-spacing:0;}
-    table.policy-table th{
-      padding:7px 10px;font-size:11px;color:var(--muted);font-weight:600;
-      border-bottom:1px solid var(--line);border-right:1px solid var(--line);
-      background:#fafbfa;text-align:center;white-space:nowrap;position:sticky;top:0;z-index:2;
-    }
-    .sticky-col2{position:sticky;left:0;background:var(--panel);z-index:3;box-shadow:2px 0 4px rgba(0,0,0,.06);}
-    table.policy-table th.left{text-align:left;}
-    table.policy-table th.group{background:#f0f3f0;font-size:11.5px;color:var(--ink);}
-    table.policy-table td{
-      padding:6px 10px;border-bottom:1px solid var(--line);border-right:1px solid var(--line);
-      text-align:right;vertical-align:middle;white-space:nowrap;
-    }
-    table.policy-table td:last-child{border-right:none;}
-    table.policy-table th:last-child{border-right:none;}
-    table.policy-table td.left{text-align:left;}
-    table.policy-table td.center{text-align:center;}
-    table.policy-table tr:hover td{background:#f7faf8;}
-    table.policy-table tr.product-header td{
-      background:#f0f7f2;font-weight:700;font-size:13px;color:var(--ink);
-      border-bottom:1px solid #c8e6d0;
-    }
-    table.policy-table tr.no-data td{color:var(--muted);font-style:italic;text-align:center;}
-    .sticky-col{position:sticky;left:0;background:var(--panel);z-index:3;will-change:transform;}
-    .s-temp{position:sticky;left:220px;background:var(--panel);z-index:3;will-change:transform;}
-    .s-cost{position:sticky;left:270px;background:var(--panel);z-index:3;box-shadow:3px 0 8px rgba(0,0,0,.10);will-change:transform;}
-    table.policy-table th.sticky-col{z-index:5 !important;background:#fafbfa !important;}
-    table.policy-table th.s-temp{z-index:5 !important;background:#fafbfa !important;}
-    table.policy-table th.s-cost{z-index:5 !important;background:#fafbfa !important;box-shadow:3px 0 8px rgba(0,0,0,.10);}
-    tr.product-header .s-temp{background:#f0f7f2 !important;}
-    tr.product-header .s-cost{background:#f0f7f2 !important;}
-    tr:hover .sticky-col{background:#f7faf8;}
-    tr:hover .s-temp{background:#f7faf8;}
-    tr:hover .s-cost{background:#f7faf8;}
-    tr.product-header .sticky-col{background:#f0f7f2;}
-    table.policy-table th.sticky-col{z-index:5;background:#fafbfa;}
+    /* 분리 테이블 레이아웃 */
+    .table-outer{display:flex;border:1px solid var(--line);border-radius:var(--radius);background:var(--panel);box-shadow:var(--shadow);overflow:hidden;}
+
+    /* 왼쪽 고정 테이블 */
+    .table-fixed{flex:0 0 var(--fix-w);width:var(--fix-w);overflow:hidden;border-right:2px solid #aacfbb;z-index:2;background:var(--panel);}
+    .table-fixed table{width:var(--fix-w);table-layout:fixed;border-collapse:collapse;font-size:12.5px;}
+
+    /* 오른쪽 스크롤 테이블 */
+    .table-scroll{flex:1;overflow-x:auto;overflow-y:hidden;}
+    .table-scroll table{border-collapse:collapse;font-size:12.5px;white-space:nowrap;}
+
+    /* 공통 th/td */
+    .tbl th{padding:7px 10px;font-size:11px;color:var(--muted);font-weight:600;border-bottom:1px solid var(--line);border-right:1px solid var(--line);background:#fafbfa;text-align:center;white-space:nowrap;}
+    .tbl td{padding:6px 10px;border-bottom:1px solid var(--line);border-right:1px solid var(--line);text-align:right;vertical-align:middle;white-space:nowrap;height:36px;}
+    .tbl th:last-child,.tbl td:last-child{border-right:none;}
+    .tbl th.left{text-align:left;}
+    .tbl td.left{text-align:left;}
+    .tbl td.center{text-align:center;}
+    .tbl tr.product-header td{background:#f0f7f2;font-weight:700;font-size:13px;color:var(--ink);border-bottom:1px solid #c8e6d0;}
+    .tbl tr.no-data td{color:var(--muted);font-style:italic;text-align:left;}
+    .tbl tr:hover td{background:#f7faf8;}
+    .tbl tr.product-header:hover td{background:#e8f4ec;}
+    .tbl th.group{background:#f0f3f0;font-size:11.5px;color:var(--ink);}
+
     .bdg{display:inline-block;padding:2px 7px;border-radius:14px;font-size:11px;font-weight:600;}
     .bdg.good{background:var(--good-bg);color:var(--good);}
     .bdg.caution{background:var(--caution-bg);color:var(--caution);}
@@ -163,9 +149,10 @@
       </span>
     </div>
 
-    <!-- 테이블 -->
-    <div class="table-wrap" id="table-wrap">
-      <div class="loading" id="loading">데이터를 불러오는 중...</div>
+    <!-- 분리 테이블: 왼쪽 고정 + 오른쪽 스크롤 -->
+    <div class="table-outer" id="table-outer">
+      <div class="table-fixed" id="table-fixed"><div class="loading">불러오는 중...</div></div>
+      <div class="table-scroll" id="table-scroll"></div>
     </div>
 
   </div>
@@ -290,73 +277,74 @@
       return true;
     });
 
-    const wrap = $('table-wrap');
+    const fixedDiv  = $('table-fixed');
+    const scrollDiv = $('table-scroll');
 
     if(products.length===0||channels.length===0){
-      wrap.innerHTML = '<div class="empty-row">표시할 데이터가 없습니다. 가격정책을 먼저 시뮬레이터에서 저장해 주세요.</div>';
+      fixedDiv.innerHTML  = '<div class="empty-row" style="padding:40px 20px;">표시할 데이터 없음</div>';
+      scrollDiv.innerHTML = '';
       return;
     }
 
-    // 각 상품의 product_units 맵
-    const unitsMap = {}; // product_id => [unit, ...]
+    const unitsMap = {};
     allUnits.forEach(u=>{
       if(!unitsMap[u.product_id]) unitsMap[u.product_id]=[];
       unitsMap[u.product_id].push(u);
     });
 
-    let html = `<table class="policy-table"><thead>
-      <tr>
-        <th class="left sticky-col" rowspan="3" style="min-width:220px;border-right:1px solid var(--line);vertical-align:middle;background:#fafbfa;">상품 / 입수량</th>
-        <th class="s-temp" rowspan="3" style="width:50px;border-right:1px solid var(--line);vertical-align:middle;background:#fafbfa;">품온</th>
-        <th class="s-cost" rowspan="3" style="width:80px;border-right:2px solid var(--line);vertical-align:middle;font-size:11px;background:#fafbfa;">원가<br><span style="font-weight:400;">(EA)</span></th>`;
+    // ── 왼쪽 고정 테이블 (상품/입수량 + 품온 + 원가) ──
+    let fHtml = `<table class="tbl" style="width:350px;table-layout:fixed;">
+      <thead>
+        <tr>
+          <th class="left" rowspan="3" style="width:220px;vertical-align:middle;">상품 / 입수량</th>
+          <th rowspan="3" style="width:50px;vertical-align:middle;">품온</th>
+          <th rowspan="3" style="width:80px;vertical-align:middle;border-right:none;">원가<br><span style="font-weight:400;">(EA)</span></th>
+        </tr>
+        <tr></tr><tr></tr>
+      </thead>
+      <tbody id="fixed-body">`;
 
-    // 채널별 헤더 1행: 채널명, 10컬럼씩 (원가제외, 정상3+상시3+최대3+이익1)
+    // ── 오른쪽 스크롤 테이블 ──
+    let sHtml = `<table class="tbl">
+      <thead>
+        <tr>`;
     channels.forEach(c=>{
-      html += `<th colspan="9" class="group" style="border-right:2px solid var(--line);">${esc(c.name)}<span style="font-weight:400;font-size:11px;color:var(--muted);margin-left:6px;">${c.channel_type==='direct'?'직납':'위탁'}</span></th>`;
+      sHtml += `<th colspan="9" class="group" style="border-right:2px solid var(--line);">${esc(c.name)} <span style="font-weight:400;font-size:11px;color:var(--muted);">${c.channel_type==='direct'?'직납':'위탁'}</span></th>`;
     });
-    html += `</tr><tr>`;
-
-    // 헤더 2행: 정상/상시/최대 그룹 (각 3컬럼)
-    channels.forEach(c=>{
-      html += `<th colspan="3" style="border-left:2px solid var(--line);background:#f0f7f2;font-size:11px;color:#2f7d4f;border-bottom:1px solid #b8dfc8;">정상판매가</th>`;
-      html += `<th colspan="3" style="border-left:1px solid var(--line);background:#f0f4f9;font-size:11px;color:#1a5fa8;border-bottom:1px solid #b8cfe0;">상시할인가</th>`;
-      html += `<th colspan="3" style="border-left:1px solid var(--line);border-right:2px solid var(--line);background:#fdf0f0;font-size:11px;color:#b4452f;border-bottom:1px solid #e0c0b8;">최대할인가</th>`;
+    sHtml += `</tr><tr>`;
+    channels.forEach(()=>{
+      sHtml += `<th colspan="3" style="border-left:2px solid var(--line);background:#f0f7f2;font-size:11px;color:#2f7d4f;">정상판매가</th>`;
+      sHtml += `<th colspan="3" style="border-left:1px solid var(--line);background:#f0f4f9;font-size:11px;color:#1a5fa8;">상시할인가</th>`;
+      sHtml += `<th colspan="3" style="border-left:1px solid var(--line);border-right:2px solid var(--line);background:#fdf0f0;font-size:11px;color:#b4452f;">최대할인가</th>`;
     });
-    html += `</tr><tr>`;
-
-    // 헤더 3행: 개당가/판매가/이익률
-    channels.forEach(c=>{
-      html += `<th style="border-left:2px solid var(--line);background:#f0f7f2;font-size:10.5px;">개당가</th>
-               <th style="background:#f0f7f2;font-size:10.5px;">판매가</th>
-               <th style="background:#f0f7f2;font-size:10.5px;">이익률</th>`;
-      html += `<th style="border-left:1px solid var(--line);background:#f0f4f9;font-size:10.5px;">개당가</th>
-               <th style="background:#f0f4f9;font-size:10.5px;">판매가</th>
-               <th style="background:#f0f4f9;font-size:10.5px;">이익률</th>`;
-      html += `<th style="border-left:1px solid var(--line);background:#fdf0f0;font-size:10.5px;">개당가</th>
-               <th style="background:#fdf0f0;font-size:10.5px;">판매가</th>
-               <th style="border-right:2px solid var(--line);background:#fdf0f0;font-size:10.5px;">이익률</th>`;
+    sHtml += `</tr><tr>`;
+    channels.forEach(()=>{
+      sHtml += `<th style="border-left:2px solid var(--line);background:#f0f7f2;font-size:10.5px;">개당가</th><th style="background:#f0f7f2;font-size:10.5px;">판매가</th><th style="background:#f0f7f2;font-size:10.5px;">이익률</th>`;
+      sHtml += `<th style="border-left:1px solid var(--line);background:#f0f4f9;font-size:10.5px;">개당가</th><th style="background:#f0f4f9;font-size:10.5px;">판매가</th><th style="background:#f0f4f9;font-size:10.5px;">이익률</th>`;
+      sHtml += `<th style="border-left:1px solid var(--line);background:#fdf0f0;font-size:10.5px;">개당가</th><th style="background:#fdf0f0;font-size:10.5px;">판매가</th><th style="border-right:2px solid var(--line);background:#fdf0f0;font-size:10.5px;">이익률</th>`;
     });
-    html += `</tr></thead><tbody>`;
+    sHtml += `</tr></thead><tbody id="scroll-body">`;
 
     products.forEach(prod=>{
       const units = (unitsMap[prod.id]||[]).sort((a,b)=>a.box_qty-b.box_qty);
+      const rowspan = units.length>0 ? units.length : 1;
 
-      // 상품 헤더 행
-      html += `<tr class="product-header">
-        <td class="left sticky-col" style="border-right:1px solid var(--line);background:#fff;">
+      // 고정 테이블: 상품 헤더행
+      fHtml += `<tr class="product-header">
+        <td class="left" colspan="3" style="border-right:none;">
           <strong>${esc(prod.code||'')} ${esc(prod.name)}</strong>
         </td>
-        <td class="center s-temp" style="background:#f0f7f2 !important;border-right:1px solid var(--line);">${prod.temperature}</td>
-        <td class="s-cost" style="background:#f0f7f2 !important;border-right:2px solid var(--line);text-align:right;font-size:12px;color:var(--muted);"></td>`;
-      channels.forEach(()=>{ html += `<td colspan="9" style="border-right:2px solid var(--line);background:#f0f7f2;"></td>`; });
-      html += `</tr>`;
+      </tr>`;
+      // 스크롤 테이블: 상품 헤더행
+      sHtml += `<tr class="product-header">`;
+      channels.forEach(()=>{ sHtml += `<td colspan="9" style="border-right:2px solid var(--line);background:#f0f7f2;"></td>`; });
+      sHtml += `</tr>`;
 
       if(units.length===0){
-        html += `<tr class="no-data"><td class="sticky-col" style="border-right:1px solid var(--line);padding-left:20px;color:var(--muted);font-style:italic;text-align:left;">가격정책 미등록</td>
-          <td class="s-temp" style="border-right:1px solid var(--line);background:#fff !important;"></td>
-          <td class="s-cost" style="border-right:2px solid var(--line);background:#fff !important;"></td>`;
-        channels.forEach(()=>{ html += `<td colspan="9" style="border-right:2px solid var(--line);text-align:center;color:var(--muted);">-</td>`; });
-        html += `</tr>`;
+        fHtml += `<tr class="no-data"><td class="left" style="padding-left:16px;color:var(--muted);" colspan="3">가격정책 미등록</td></tr>`;
+        sHtml += `<tr class="no-data">`;
+        channels.forEach(()=>{ sHtml += `<td colspan="9" style="border-right:2px solid var(--line);text-align:center;color:var(--muted);">-</td>`; });
+        sHtml += `</tr>`;
       } else {
         units.forEach(unit=>{
           const qty = unit.box_qty;
@@ -364,40 +352,56 @@
           const eaAp = qty>0 ? Math.round((unit.always_price||0)/qty) : 0;
           const eaMp = qty>0 ? Math.round((unit.max_price||0)/qty) : 0;
 
-          html += `<tr>
-            <td class="left sticky-col" style="padding-left:20px;border-right:1px solid var(--line);background:#fff;">
-              ${qty}개입
-            </td>
-            <td class="center s-temp" style="border-right:1px solid var(--line);background:#fff !important;">${prod.temperature}</td>
-            <td class="s-cost" style="border-right:2px solid var(--line);text-align:right;font-size:12px;color:var(--muted);background:#fff !important;">${comma((prod.unit_cost||0)*qty)}원</td>`;
+          fHtml += `<tr>
+            <td class="left" style="padding-left:16px;">${qty}개입</td>
+            <td class="center">${prod.temperature}</td>
+            <td style="border-right:none;color:var(--muted);font-size:11px;">${comma((prod.unit_cost||0)*qty)}</td>
+          </tr>`;
 
-          channels.forEach((ch,ci)=>{
+          sHtml += `<tr>`;
+          channels.forEach(ch=>{
             const rn = calcProfit(unit.normal_price, qty, prod, ch);
             const ra = calcProfit(unit.always_price, qty, prod, ch);
             const rm = calcProfit(unit.max_price, qty, prod, ch);
-            const borderR = 'border-right:2px solid var(--line);';
-
-            // 정상판매가
-            html += `<td style="border-left:2px solid var(--line);background:#fafdf9;">${eaNp?comma(eaNp):'-'}</td>
-                     <td style="background:#fafdf9;">${unit.normal_price?comma(unit.normal_price):'-'}</td>
-                     <td style="background:#fafdf9;">${rn?badge(rn.opRate):'-'}</td>`;
-            // 상시할인가
-            html += `<td style="border-left:1px solid var(--line);background:#f7f9fd;">${eaAp?comma(eaAp):'-'}</td>
-                     <td style="background:#f7f9fd;">${unit.always_price?comma(unit.always_price):'-'}</td>
-                     <td style="background:#f7f9fd;">${ra?badge(ra.opRate):'-'}</td>`;
-            // 최대할인가
-            html += `<td style="border-left:1px solid var(--line);background:#fdf9f9;">${eaMp?comma(eaMp):'-'}</td>
-                     <td style="background:#fdf9f9;">${unit.max_price?comma(unit.max_price):'-'}</td>
-                     <td style="${borderR}background:#fdf9f9;">${rm?badge(rm.opRate):'-'}</td>`;
+            const bR = 'border-right:2px solid var(--line);';
+            sHtml += `<td style="border-left:2px solid var(--line);background:#fafdf9;">${eaNp?comma(eaNp):'-'}</td>
+                      <td style="background:#fafdf9;">${unit.normal_price?comma(unit.normal_price):'-'}</td>
+                      <td style="background:#fafdf9;">${rn?badge(rn.opRate):'-'}</td>`;
+            sHtml += `<td style="border-left:1px solid var(--line);background:#f7f9fd;">${eaAp?comma(eaAp):'-'}</td>
+                      <td style="background:#f7f9fd;">${unit.always_price?comma(unit.always_price):'-'}</td>
+                      <td style="background:#f7f9fd;">${ra?badge(ra.opRate):'-'}</td>`;
+            sHtml += `<td style="border-left:1px solid var(--line);background:#fdf9f9;">${eaMp?comma(eaMp):'-'}</td>
+                      <td style="background:#fdf9f9;">${unit.max_price?comma(unit.max_price):'-'}</td>
+                      <td style="${bR}background:#fdf9f9;">${rm?badge(rm.opRate):'-'}</td>`;
           });
-          html += `</tr>`;
+          sHtml += `</tr>`;
         });
       }
     });
 
-    html += `</tbody></table>`;
-    wrap.innerHTML = html;
+    fHtml += `</tbody></table>`;
+    sHtml += `</tbody></table>`;
+
+    fixedDiv.innerHTML  = fHtml;
+    scrollDiv.innerHTML = sHtml;
+
+    // 행 높이 동기화: 왼쪽 행 높이를 오른쪽과 맞춤
+    syncRowHeights();
   }
+
+  function syncRowHeights(){
+    const fRows = $('table-fixed').querySelectorAll('tr');
+    const sRows = $('table-scroll').querySelectorAll('tr');
+    const len = Math.min(fRows.length, sRows.length);
+    for(let i=0; i<len; i++){
+      fRows[i].style.height = '';
+      sRows[i].style.height = '';
+      const h = Math.max(fRows[i].offsetHeight, sRows[i].offsetHeight);
+      fRows[i].style.height = h+'px';
+      sRows[i].style.height = h+'px';
+    }
+  }
+
 
   function esc(s){return String(s??"").replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));}
 </script>
