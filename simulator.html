@@ -200,17 +200,25 @@
     <div class="card">
       <div class="card-title">🏪 판매처</div>
       <div class="fl">
+        <label>채널 유형</label>
+        <select id="sel-chtype">
+          <option value="">-- 유형 선택 --</option>
+          <option value="consign">위탁채널</option>
+          <option value="direct">직납채널</option>
+        </select>
+      </div>
+      <div class="fl">
         <label>판매처 선택</label>
-        <select id="sel-channel"><option value="">-- 판매처 선택 --</option></select>
+        <select id="sel-channel" disabled><option value="">-- 유형을 먼저 선택하세요 --</option></select>
       </div>
       <div class="g2" style="margin-top:6px;">
         <div class="fl">
-          <label>채널 유형</label>
-          <input type="text" id="disp-chtype" class="readonly" disabled />
-        </div>
-        <div class="fl">
           <label>수수료 기준</label>
           <input type="text" id="disp-feebase" class="readonly" disabled />
+        </div>
+        <div class="fl">
+          <label>운반비 (자동)</label>
+          <input type="text" id="disp-freight2" class="readonly" disabled />
         </div>
       </div>
       <div class="dist-box" id="dist-box"></div>
@@ -218,15 +226,9 @@
 
     <div class="card">
       <div class="card-title">🧾 직접 판관비</div>
-      <div class="g2">
-        <div class="fl">
-          <label>지급수수료 (%)</label>
-          <input type="number" id="feeRate" value="0" />
-        </div>
-        <div class="fl">
-          <label>운반비 (자동)</label>
-          <input type="text" id="disp-freight" class="readonly" disabled />
-        </div>
+      <div class="fl">
+        <label>지급수수료 (%)</label>
+        <input type="number" id="feeRate" value="0" />
       </div>
       <div class="fl">
         <label>광고선전비</label>
@@ -401,17 +403,69 @@
     sel.appendChild(newOpt);
   }
 
+  let allChannels = [];
+
   async function loadChannels(){
     const { data } = await sb.from('channels').select('*').eq('is_active',true).order('name');
     if (!data) return;
-    const sel = $('sel-channel');
-    sel.innerHTML = '<option value="">-- 판매처 선택 --</option>';
-    data.forEach(c=>{
-      const o = document.createElement('option');
-      o.value = c.id; o.textContent = c.name + (c.channel_type==='direct'?' (직납)':' (위탁)');
-      o.dataset.info = JSON.stringify(c); sel.appendChild(o);
-    });
+    allChannels = data;
   }
+
+  // 채널유형 선택 → 판매처 드롭다운 필터링
+  $('sel-chtype').addEventListener('change', e=>{
+    const type = e.target.value;
+    const sel = $('sel-channel');
+    currentChannel = null;
+    $('disp-feebase').value = '';
+    $('disp-freight2').value = '';
+    $('dist-box').style.display = 'none';
+
+    if (!type) {
+      sel.innerHTML = '<option value="">-- 유형을 먼저 선택하세요 --</option>';
+      sel.disabled = true;
+      renderResultTable();
+      return;
+    }
+
+    // 해당 유형 채널만 필터링, 대표채널 먼저
+    const filtered = allChannels.filter(c => c.channel_type === type);
+    const reps = filtered.filter(c => c.is_representative);
+    const others = filtered.filter(c => !c.is_representative);
+    const sorted = [...reps, ...others];
+
+    sel.innerHTML = '<option value="">-- 판매처 선택 --</option>';
+    if (reps.length > 0) {
+      const grp1 = document.createElement('optgroup');
+      grp1.label = '★ 대표채널';
+      reps.forEach(c => {
+        const o = document.createElement('option');
+        o.value = c.id; o.textContent = c.name;
+        o.dataset.info = JSON.stringify(c);
+        grp1.appendChild(o);
+      });
+      sel.appendChild(grp1);
+    }
+    if (others.length > 0) {
+      const grp2 = document.createElement('optgroup');
+      grp2.label = '기타 채널';
+      others.forEach(c => {
+        const o = document.createElement('option');
+        o.value = c.id; o.textContent = c.name;
+        o.dataset.info = JSON.stringify(c);
+        grp2.appendChild(o);
+      });
+      sel.appendChild(grp2);
+    }
+    sel.disabled = false;
+
+    // 대표채널이 하나면 자동 선택
+    if (reps.length === 1) {
+      sel.value = reps[0].id;
+      sel.dispatchEvent(new Event('change'));
+    }
+
+    renderResultTable();
+  });
 
   async function loadFreight(){
     const { data } = await sb.from('logistics').select('temperature,consign_freight').eq('is_active',true);
@@ -471,11 +525,11 @@
       const fm = freightMaster[temp];
       distBox.style.display='block';
       distBox.textContent=`직납 · 유통사이익율 ${fm.dDist}% · 운반비율 ${fm.dRate}% (${temp})`;
-      $('disp-freight').value = fm.dRate+'% (직납)';
+      $('disp-freight2').value = fm.dRate+'% (직납)';
     } else {
       distBox.style.display='none';
       const temp = currentProduct?.temperature||'실온';
-      $('disp-freight').value = comma(freightMaster[temp].consign)+'원/박스';
+      $('disp-freight2').value = comma(freightMaster[temp].consign)+'원/박스';
     }
     renderResultTable();
   });
@@ -636,12 +690,12 @@
       const isDirect = currentChannel.channel_type==='direct';
       const fm = freightMaster[temp]||{consign:0,dRate:0,dDist:0};
       if (isDirect){
-        $('disp-freight').value = fm.dRate+'% (직납)';
+        $('disp-freight2').value = fm.dRate+'% (직납)';
         const distBox = $('dist-box');
         distBox.style.display='block';
         distBox.textContent=`직납 · 유통사이익율 ${fm.dDist}% · 운반비율 ${fm.dRate}% (${temp})`;
       } else {
-        $('disp-freight').value = comma(fm.consign)+'원/박스';
+        $('disp-freight2').value = comma(fm.consign)+'원/박스';
       }
     }
     renderResultTable();
