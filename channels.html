@@ -132,11 +132,12 @@
       <table>
         <thead>
           <tr>
-            <th>채널명</th><th>유형</th><th>지급수수료</th>
+            <th>채널명</th><th>유형</th>
+            <th class="ctr">유통사이익율<br><span style="font-size:11px;font-weight:400;">(직납만)</span></th>
+            <th>지급수수료</th>
             <th class="num">광고선전비</th><th class="num">판매촉진비</th>
             <th class="num">본부공통비</th><th class="num">부문공통비</th>
             <th class="num">기타고정비</th>
-            <th class="ctr">유통사이익율<br><span style="font-size:11px;font-weight:400;">(직납만)</span></th>
             <th>상태</th><th></th>
           </tr>
         </thead>
@@ -336,13 +337,13 @@
       tr.innerHTML=`
         <td class="cname">${esc(c.name)}</td>
         <td>${typeTag(c.channel_type)}</td>
+        <td class="ctr">${distRateCell}</td>
         <td>${c.commission_rate||0}% <span class="sub">/ ${baseLabel(c.commission_base)}</span></td>
         <td class="num">${tv(c.ad_type,c.ad_value)}</td>
         <td class="num">${tv(c.promotion_type,c.promotion_value)}</td>
         <td class="num">${tv(c.hq_type,c.hq_value)}</td>
         <td class="num">${tv(c.div_type,c.div_value)}</td>
         <td class="num">${comma(c.other_fixed)}원</td>
-        <td class="ctr">${distRateCell}</td>
         <td>${c.is_active===false?'<span class="status-off">비활성</span>':'<span class="status-on">활성</span>'}</td>
         <td></td>`;
       if(canEdit){
