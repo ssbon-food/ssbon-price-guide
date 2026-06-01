@@ -169,9 +169,40 @@
       <div class="card-title">📦 상품 정보</div>
       <div class="fl">
         <label>상품 선택</label>
-        <select id="sel-product"><option value="">-- 상품 선택 --</option></select>
+        <select id="sel-product">
+          <option value="">-- 상품 선택 --</option>
+          <option value="__new__">✏️ 신규상품 직접입력</option>
+        </select>
       </div>
       <div class="info-bar" id="product-info"></div>
+
+      <!-- 신규상품 입력 섹션 (신규상품 선택 시 표시) -->
+      <div id="new-product-section" style="display:none;margin-top:10px;padding:10px 12px;background:#fffbf0;border:1px dashed #e2c97e;border-radius:8px;">
+        <div style="font-size:11px;font-weight:700;color:#9a7b1f;margin-bottom:8px;">✏️ 신규상품 정보 입력</div>
+        <div class="fl">
+          <label>ERP코드</label>
+          <input type="text" id="new-code" placeholder="예: A003" />
+        </div>
+        <div class="fl">
+          <label>상품명 *</label>
+          <input type="text" id="new-name" placeholder="예: 순수본 전복죽 500g" />
+        </div>
+        <div class="g2">
+          <div class="fl">
+            <label>품온 *</label>
+            <select id="new-temp">
+              <option value="실온">실온</option>
+              <option value="냉장">냉장</option>
+              <option value="냉동">냉동</option>
+            </select>
+          </div>
+          <div class="fl">
+            <label>단량 (g)</label>
+            <input type="number" id="new-weight" placeholder="0" />
+          </div>
+        </div>
+      </div>
+
       <div class="g2" style="margin-top:8px;">
         <div class="fl">
           <label>품온</label>
@@ -424,12 +455,33 @@
 
   // ── 상품 선택 ──
   $('sel-product').addEventListener('change', async e=>{
+    const val = e.target.value;
+
+    // 신규상품 직접입력 선택
+    if (val === '__new__') {
+      currentProduct = null;
+      $('new-product-section').style.display = 'block';
+      $('product-info').style.display = 'none';
+      $('disp-temp').value = '';
+      $('inp-unit-cost').value = 0;
+      $('inp-normal-price').value = 0;
+      // 품온 변경 시 disp-temp 동기화
+      $('new-temp').onchange = ()=>{ $('disp-temp').value = $('new-temp').value; };
+      $('disp-temp').value = $('new-temp').value;
+      $('btn-add-row').style.display='block';
+      renderUnitRows([]);
+      renderResultTable();
+      return;
+    }
+
+    // 기존 상품 선택
+    $('new-product-section').style.display = 'none';
     const opt = e.target.options[e.target.selectedIndex];
     if (!opt.dataset.info){ currentProduct=null; resetUnitTable(); return; }
     currentProduct = JSON.parse(opt.dataset.info);
 
-    $('disp-temp').value   = currentProduct.temperature||'';
-    $('inp-unit-cost').value  = currentProduct.unit_cost||0;
+    $('disp-temp').value        = currentProduct.temperature||'';
+    $('inp-unit-cost').value    = currentProduct.unit_cost||0;
     $('inp-normal-price').value = currentProduct.normal_price||0;
 
     const info = $('product-info');
@@ -686,11 +738,58 @@
 
   // ── 가격정책 반영 (master/admin) ──
   $('btn-apply').addEventListener('click', async()=>{
-    if (!currentProduct){ alert('상품을 선택해 주세요.'); return; }
     const rows = getUnitRows();
     if (rows.length===0){ alert('입수량을 추가해 주세요.'); return; }
-    if (!confirm('현재 시뮬레이터 설정을 가격정책에 반영할까요?\n기존 가격정책이 덮어씌워집니다.')) return;
 
+    const isNew = ($('sel-product').value === '__new__');
+
+    // 신규상품인 경우: 상품마스터에 먼저 등록
+    if (isNew) {
+      const newName = $('new-name').value.trim();
+      if (!newName){ alert('상품명을 입력해 주세요.'); return; }
+      if (!confirm(`신규상품 "${newName}"을 상품마스터에 등록하고 가격정책에 반영할까요?`)) return;
+
+      const { data:newProd, error:pErr } = await sb.from('products').insert({
+        code:         $('new-code').value.trim()||'',
+        name:         newName,
+        temperature:  $('new-temp').value,
+        unit_weight:  parseFloat($('new-weight').value)||0,
+        unit_cost:    parseFloat($('inp-unit-cost').value)||0,
+        normal_price: parseFloat($('inp-normal-price').value)||0,
+        is_active:    true,
+        created_by:   me.id,
+        updated_by:   me.id,
+        updated_at:   new Date().toISOString(),
+      }).select().single();
+
+      if (pErr){ alert('상품 등록 실패: '+pErr.message); return; }
+      currentProduct = newProd;
+
+      // 드롭다운에 새 상품 추가 후 선택
+      const sel = $('sel-product');
+      const opt = document.createElement('option');
+      opt.value = newProd.id;
+      opt.textContent = `${newProd.code||''} · ${newProd.name}`;
+      opt.dataset.info = JSON.stringify(newProd);
+      sel.appendChild(opt);
+      sel.value = newProd.id;
+      $('new-product-section').style.display='none';
+      $('product-info').style.display='block';
+      $('product-info').textContent=`${newProd.code||''} · 단량 ${comma(newProd.unit_weight)}g`;
+    } else {
+      if (!currentProduct){ alert('상품을 선택해 주세요.'); return; }
+      if (!confirm('현재 시뮬레이터 설정을 가격정책에 반영할까요?\n기존 가격정책이 덮어씌워집니다.')) return;
+
+      // 기존 상품 기본정보 업데이트
+      await sb.from('products').update({
+        unit_cost:    parseFloat($('inp-unit-cost').value)||0,
+        normal_price: parseFloat($('inp-normal-price').value)||0,
+        updated_by:   me.id,
+        updated_at:   new Date().toISOString(),
+      }).eq('id',currentProduct.id);
+    }
+
+    // product_units 저장
     const upsertData = rows.map(tr=>({
       product_id:   currentProduct.id,
       box_qty:      parseInt(tr.querySelector('.qty').value)||1,
@@ -706,15 +805,7 @@
     const { error } = await sb.from('product_units').insert(upsertData);
     if (error){ alert('반영 실패: '+error.message); return; }
 
-    // 상품 기본정보도 업데이트 (원가, 정상가)
-    await sb.from('products').update({
-      unit_cost:    parseFloat($('inp-unit-cost').value)||0,
-      normal_price: parseFloat($('inp-normal-price').value)||0,
-      updated_by:   me.id,
-      updated_at:   new Date().toISOString(),
-    }).eq('id',currentProduct.id);
-
-    flash('✓ 가격정책에 반영됐어요');
+    flash(isNew ? '✓ 상품마스터 등록 + 가격정책 반영 완료' : '✓ 가격정책에 반영됐어요');
   });
 
   // ── 시나리오 저장 ──
