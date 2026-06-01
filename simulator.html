@@ -29,8 +29,8 @@
     * { box-sizing:border-box; margin:0; padding:0; }
     body { font-family:'IBM Plex Sans KR', sans-serif; background:var(--bg); color:var(--ink);
       background-image:radial-gradient(var(--line) 1px, transparent 1px); background-size:22px 22px;
-      padding:32px 20px 60px; line-height:1.5; }
-    .wrap { max-width:1080px; margin:0 auto; }
+      line-height:1.5; }
+    .wrap { max-width:1080px; margin:0 auto; padding:32px 20px 60px; }
     header { margin-bottom:26px; }
     .eyebrow { font-size:12px; letter-spacing:0.14em; text-transform:uppercase; color:var(--accent); font-weight:600; margin-bottom:6px; }
     h1 { font-family:'Gowun Batang', serif; font-size:30px; }
@@ -100,38 +100,50 @@
 <body>
   <!-- ===================================================================
      공통 상단 메뉴 (네비게이션)
-     · 이 블록 전체를 simulator.html 과 products.html 의
-       <body> 바로 다음 줄에 "똑같이" 붙여넣으세요.
-     · 지금 보고 있는 페이지는 자동으로 초록색으로 표시됩니다.
+     · 사용자 관리 / 로그아웃 버튼이 이제 메뉴 막대 오른쪽 안에 들어 있어요.
+       (예전처럼 화면에 따로 떠 있지 않습니다.)
+     · 버튼 id(adminBtn·logoutBtn)는 그대로라 로그인·관리자 로직은 동일하게 작동합니다.
      =================================================================== -->
-<div class="ssbon-nav">
-  <div class="ssbon-nav-inner">
-    <span class="ssbon-nav-brand"><i class="ssbon-nav-dot"></i>순수본 가격도구</span>
-    <nav class="ssbon-nav-links">
-      <a href="simulator.html" data-nav="simulator.html">가격 시뮬레이터</a>
-      <a href="products.html" data-nav="products.html">상품 마스터</a>
-    </nav>
+  <div class="ssbon-nav">
+    <div class="ssbon-nav-inner">
+      <span class="ssbon-nav-brand"><i class="ssbon-nav-dot"></i>순수본 가격도구</span>
+      <nav class="ssbon-nav-links">
+        <a href="simulator.html" data-nav="simulator.html">가격 시뮬레이터</a>
+        <a href="products.html" data-nav="products.html">상품 마스터</a>
+      </nav>
+      <!-- 오른쪽 버튼 묶음 (로그인 통과 후에만 보임) -->
+      <div class="ssbon-nav-right">
+        <button id="adminBtn" class="ssbon-nav-btn primary" style="display:none;">사용자 관리</button>
+        <button id="logoutBtn" class="ssbon-nav-btn" style="display:none;">로그아웃</button>
+      </div>
+    </div>
   </div>
-</div>
-<style>
-  .ssbon-nav { background:#fff; border-bottom:1px solid #e3e8e3; font-family:"Pretendard",-apple-system,"Malgun Gothic",sans-serif; }
-  .ssbon-nav-inner { max-width:1100px; margin:0 auto; padding:0 18px; height:48px; display:flex; align-items:center; gap:20px; }
-  .ssbon-nav-brand { display:flex; align-items:center; gap:7px; font-size:13px; font-weight:700; color:#1d2620; white-space:nowrap; }
-  .ssbon-nav-dot { width:8px; height:8px; border-radius:50%; background:#2f7d4f; display:inline-block; }
-  .ssbon-nav-links { display:flex; gap:6px; }
-  .ssbon-nav-links a { text-decoration:none; font-size:14px; font-weight:600; color:#6b7770; padding:7px 13px; border-radius:8px; transition:.12s; }
-  .ssbon-nav-links a:hover { background:#f0f3f0; color:#1d2620; }
-  .ssbon-nav-links a.active { background:#e7f2ec; color:#2f7d4f; }
-</style>
-<script>
-  // 현재 페이지에 해당하는 메뉴를 자동으로 강조 표시
-  (function () {
-    var page = location.pathname.split("/").pop() || "index.html";
-    document.querySelectorAll('.ssbon-nav-links a[data-nav]').forEach(function (a) {
-      if (a.getAttribute("data-nav") === page) a.classList.add("active");
-    });
-  })();
-</script>
+  <style>
+    .ssbon-nav { background:#fff; border-bottom:1px solid #e3e8e3; font-family:"Pretendard",'IBM Plex Sans KR',-apple-system,"Malgun Gothic",sans-serif; }
+    .ssbon-nav-inner { max-width:1080px; margin:0 auto; padding:0 18px; min-height:48px; display:flex; align-items:center; gap:20px; flex-wrap:wrap; }
+    .ssbon-nav-brand { display:flex; align-items:center; gap:7px; font-size:13px; font-weight:700; color:#1d2620; white-space:nowrap; }
+    .ssbon-nav-dot { width:8px; height:8px; border-radius:50%; background:#2f7d4f; display:inline-block; }
+    .ssbon-nav-links { display:flex; gap:6px; }
+    .ssbon-nav-links a { text-decoration:none; font-size:14px; font-weight:600; color:#6b7770; padding:7px 13px; border-radius:8px; transition:.12s; }
+    .ssbon-nav-links a:hover { background:#f0f3f0; color:#1d2620; }
+    .ssbon-nav-links a.active { background:#e7f2ec; color:#2f7d4f; }
+    /* 오른쪽 버튼 묶음을 끝으로 밀고, 메뉴 막대 톤에 맞춤 */
+    .ssbon-nav-right { margin-left:auto; display:flex; gap:8px; }
+    .ssbon-nav-btn { font-family:inherit; font-size:12.5px; font-weight:600; padding:7px 13px; border-radius:8px; cursor:pointer; color:#2f7d4f; background:#fff; border:1px solid #e3e8e3; }
+    .ssbon-nav-btn:hover { background:#f0f3f0; }
+    .ssbon-nav-btn.primary { color:#fff; background:#2f7d4f; border-color:#2f7d4f; }
+    .ssbon-nav-btn.primary:hover { opacity:.9; }
+  </style>
+  <script>
+    // 현재 페이지에 해당하는 메뉴를 자동으로 강조 표시
+    (function () {
+      var page = location.pathname.split("/").pop() || "index.html";
+      document.querySelectorAll('.ssbon-nav-links a[data-nav]').forEach(function (a) {
+        if (a.getAttribute("data-nav") === page) a.classList.add("active");
+      });
+    })();
+  </script>
+
   <!-- 로그인/승인 확인 게이트 (확인될 때까지 화면 전체를 덮음) -->
   <div id="authGate" style="position:fixed; inset:0; z-index:9999; background:#f4f1ea;
        display:flex; align-items:center; justify-content:center; text-align:center; padding:24px;">
@@ -142,14 +154,6 @@
         color:#fff; background:#3f6b46; border:none; border-radius:9px; padding:11px 22px; cursor:pointer;">로그아웃</button>
     </div>
   </div>
-
-  <!-- 우측 상단 버튼들 (통과 후에만 보임) -->
-  <button id="adminBtn" style="position:fixed; top:16px; right:104px; z-index:50; display:none;
-    font-family:inherit; font-size:12.5px; font-weight:600; color:#fff; background:#3f6b46;
-    border:1px solid #3f6b46; border-radius:8px; padding:8px 12px; cursor:pointer;">사용자 관리</button>
-  <button id="logoutBtn" style="position:fixed; top:16px; right:18px; z-index:50; display:none;
-    font-family:inherit; font-size:12.5px; font-weight:600; color:#3f6b46; background:#fff;
-    border:1px solid #e2dccf; border-radius:8px; padding:8px 12px; cursor:pointer;">로그아웃</button>
 
   <script>
     // 진입 관문: 로그인 + 활성(승인) 사용자만 통과
@@ -173,8 +177,8 @@
         } catch (e) {}
         if (p && p.is_active && p.role !== 'pending') {
           document.getElementById('authGate').style.display = 'none';      // 통과 → 게이트 제거
-          document.getElementById('logoutBtn').style.display = 'block';
-          if (p.role === 'admin') document.getElementById('adminBtn').style.display = 'block';  // 관리자만 사용자 관리 버튼
+          document.getElementById('logoutBtn').style.display = 'inline-block';
+          if (p.role === 'admin') document.getElementById('adminBtn').style.display = 'inline-block';  // 관리자만 사용자 관리 버튼
         } else {
           document.getElementById('gateMsg').textContent = '승인 대기 중입니다';
           document.getElementById('gateSub').textContent = '관리자 승인이 완료되면 이용할 수 있습니다.';
