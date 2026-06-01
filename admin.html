@@ -115,6 +115,8 @@
     const sb = window.supabase.createClient(
       "https://ngvgzfhvjaowwhnmmpex.supabase.co",
       "sb_publishable_Mxqz7HBIPJNp0UQUgjsmiA_lHSfCh-A"
+    );
+
   function initNav(user) {
     var who = document.getElementById('nav-who');
     var role = document.getElementById('nav-role');
@@ -184,9 +186,10 @@
       const { data: { session } } = await sb.auth.getSession();
       if (!session){ window.location.href = './index.html'; return; }
       let p = null;
-      try { const r = await sb.from('users').select('role').eq('id', session.user.id).single(); p = r.data; } catch(e){}
+      try { const r = await sb.from('users').select('*').eq('id', session.user.id).single(); p = r.data; } catch(e){}
       if (p && p.role === 'admin'){
         document.getElementById('gate').style.display = 'none';
+        initNav(p);
         loadUsers();
       } else {
         document.getElementById('gate').innerHTML = '<div><p>관리자 전용 페이지입니다</p><p style="font-size:13px;color:#8a8073;margin-top:8px;"><a href="./simulator.html" style="color:#3f6b46;">시뮬레이터로 돌아가기</a></p></div>';
