@@ -555,15 +555,18 @@
   function addUnitRow(unit){
     const tbody = $('unit-rows');
     const tr = document.createElement('tr');
-    const eaCost = parseFloat($('inp-unit-cost').value)||(currentProduct?.unit_cost||0);
-    const qty    = unit?.box_qty||1;
+    const eaCost   = parseFloat($('inp-unit-cost').value)||(currentProduct?.unit_cost||0);
+    const eaNormal  = parseFloat($('inp-normal-price').value)||(currentProduct?.normal_price||0);
+    const qty       = unit?.box_qty||1;
     const totalCost = Math.round(eaCost * qty);
+    // unit이 없으면(새 행) EA정상가×입수로 자동계산, unit이 있으면 저장값 사용
+    const initNp = unit ? (unit.normal_price||0) : Math.round(eaNormal * qty);
 
     tr.innerHTML=`
       <td class="tl"><input type="number" class="qty" value="${qty}" min="1" /></td>
       <td><input type="number" class="cost" value="${totalCost}" disabled /></td>
       <td>
-        <input type="number" class="np" value="${unit?.normal_price||0}" />
+        <input type="number" class="np" value="${initNp}" />
       </td>
       <td>
         <input type="number" class="ap" value="${unit?.always_price||0}" />
@@ -575,11 +578,13 @@
       </td>
       <td><button class="btn-del-row" title="삭제">✕</button></td>`;
 
-    // 입수량 변경 → 원가 재계산 (EA원가 입력칸 기준)
+    // 입수량 변경 → 원가/정상가 재계산 (EA 기준)
     tr.querySelector('.qty').addEventListener('input', e=>{
-      const q = parseFloat(e.target.value)||1;
-      const eaCost = parseFloat($('inp-unit-cost').value)||0;
+      const q        = parseFloat(e.target.value)||1;
+      const eaCost   = parseFloat($('inp-unit-cost').value)||0;
+      const eaNormal = parseFloat($('inp-normal-price').value)||0;
       tr.querySelector('.cost').value = Math.round(eaCost * q);
+      if (eaNormal > 0) tr.querySelector('.np').value = Math.round(eaNormal * q);
       updateDiscLabels(tr);
       renderResultTable();
     });
@@ -620,6 +625,21 @@
       if (qtyInput && costInput){
         const qty = parseFloat(qtyInput.value)||1;
         costInput.value = Math.round(eaCost * qty);
+      }
+    });
+    renderResultTable();
+  });
+
+  // EA정상가 변경 시 → 모든 입수행의 정상판매가 자동 업데이트
+  $('inp-normal-price') && $('inp-normal-price').addEventListener('input', ()=>{
+    const eaNormal = parseFloat($('inp-normal-price').value)||0;
+    document.querySelectorAll('#unit-rows tr').forEach(tr=>{
+      const qtyInput = tr.querySelector('.qty');
+      const npInput  = tr.querySelector('.np');
+      if (qtyInput && npInput){
+        const qty = parseFloat(qtyInput.value)||1;
+        npInput.value = Math.round(eaNormal * qty);
+        updateDiscLabels(tr);
       }
     });
     renderResultTable();
