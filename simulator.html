@@ -109,6 +109,24 @@
     .btn-primary{background:var(--accent);color:#fff;} .btn-primary:hover{opacity:.9;}
     .btn-ghost{background:#fff;color:var(--ink);border:1px solid var(--line);} .btn-ghost:hover{background:#f0f3f0;}
     .btn-scenario{background:#1a5fa8;color:#fff;} .btn-scenario:hover{opacity:.9;}
+    .btn-load{background:#fff;color:#1a5fa8;border:1px solid #1a5fa8;font-family:inherit;font-size:13px;font-weight:600;padding:8px 14px;border-radius:8px;cursor:pointer;} .btn-load:hover{background:#f0f6fc;}
+    /* 시나리오 불러오기 모달 */
+    .sc-modal-bg{position:fixed;inset:0;background:rgba(20,30,25,.45);z-index:500;display:none;align-items:flex-start;justify-content:center;padding:60px 20px;overflow-y:auto;}
+    .sc-modal-bg.show{display:flex;}
+    .sc-modal{background:#fff;border-radius:14px;width:100%;max-width:560px;box-shadow:0 12px 40px rgba(0,0,0,.2);overflow:hidden;}
+    .sc-modal-head{padding:18px 22px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;}
+    .sc-modal-head h3{font-size:16px;font-weight:700;color:var(--ink);}
+    .sc-modal-close{background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted);padding:0 4px;}
+    .sc-modal-body{padding:8px 0;max-height:420px;overflow-y:auto;}
+    .sc-item{padding:14px 22px;border-bottom:1px solid #f0f2f0;display:flex;align-items:center;justify-content:space-between;gap:12px;}
+    .sc-item:hover{background:#f7faf8;}
+    .sc-item-info{flex:1;min-width:0;}
+    .sc-item-title{font-size:14px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .sc-item-sub{font-size:12px;color:var(--muted);margin-top:2px;}
+    .sc-item-btns{display:flex;gap:6px;flex-shrink:0;}
+    .sc-btn-load{background:#2f7d4f;color:#fff;border:none;font-size:12px;font-weight:600;padding:6px 12px;border-radius:7px;cursor:pointer;}
+    .sc-btn-del{background:#fff;color:var(--warn);border:1px solid #f0d0c8;font-size:12px;font-weight:600;padding:6px 10px;border-radius:7px;cursor:pointer;}
+    .sc-empty{padding:50px 22px;text-align:center;color:var(--muted);font-size:14px;}
     .flash-msg{font-size:12px;color:var(--accent);opacity:0;transition:.3s;margin-left:4px;}
     .flash-msg.show{opacity:1;}
 
@@ -358,6 +376,7 @@
       <div class="action-bar" id="action-bar" style="display:none;">
         <button class="btn-primary" id="btn-apply" style="display:none;">가격정책에 반영</button>
         <button class="btn-scenario" id="btn-scenario">내 시나리오 저장</button>
+        <button class="btn-load" id="btn-load">📂 시나리오 불러오기</button>
         <span class="flash-msg" id="flash-msg"></span>
       </div>
     </div>
@@ -366,6 +385,19 @@
 </div>
 </div>
 
+
+<!-- 시나리오 불러오기 모달 -->
+<div class="sc-modal-bg" id="sc-modal-bg">
+  <div class="sc-modal">
+    <div class="sc-modal-head">
+      <h3>📂 저장된 시나리오</h3>
+      <button class="sc-modal-close" id="sc-modal-close">&times;</button>
+    </div>
+    <div class="sc-modal-body" id="sc-modal-body">
+      <div class="sc-empty">불러오는 중...</div>
+    </div>
+  </div>
+</div>
 <script>
   const SB_URL = "https://ngvgzfhvjaowwhnmmpex.supabase.co";
   const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ndmd6Zmh2amFvd3dobm1tcGV4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMzgyNjQsImV4cCI6MjA5NTYxNDI2NH0.jO5Ab8trHPyamHhYFXi9UWvQ217pDJW9qplBWph8cgg";
