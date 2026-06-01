@@ -53,6 +53,7 @@
       border-bottom:1px solid var(--line);border-right:1px solid var(--line);
       background:#fafbfa;text-align:center;white-space:nowrap;position:sticky;top:0;z-index:2;
     }
+    .sticky-col2{position:sticky;left:0;background:var(--panel);z-index:3;box-shadow:2px 0 4px rgba(0,0,0,.06);}
     table.policy-table th.left{text-align:left;}
     table.policy-table th.group{background:#f0f3f0;font-size:11.5px;color:var(--ink);}
     table.policy-table td{
@@ -69,9 +70,10 @@
       border-bottom:1px solid #c8e6d0;
     }
     table.policy-table tr.no-data td{color:var(--muted);font-style:italic;text-align:center;}
-    .sticky-col{position:sticky;left:0;background:var(--panel);z-index:1;}
+    .sticky-col{position:sticky;left:0;background:var(--panel);z-index:3;box-shadow:2px 0 4px rgba(0,0,0,.06);}
     tr:hover .sticky-col{background:#f7faf8;}
     tr.product-header .sticky-col{background:#f0f7f2;}
+    table.policy-table th.sticky-col{z-index:5;background:#fafbfa;}
     .bdg{display:inline-block;padding:2px 7px;border-radius:14px;font-size:11px;font-weight:600;}
     .bdg.good{background:var(--good-bg);color:var(--good);}
     .bdg.caution{background:var(--caution-bg);color:var(--caution);}
@@ -270,12 +272,12 @@
     const selTemp = $('filter-temp').value;
 
     const products = allProducts.filter(p=>{
-      if(selProd && p.id!==selProd) return false;
+      if(selProd && String(p.id)!==String(selProd)) return false;
       if(selTemp && p.temperature!==selTemp) return false;
       return true;
     });
     const channels = allChannels.filter(c=>{
-      if(selChan && c.id!==selChan) return false;
+      if(selChan && String(c.id)!==String(selChan)) return false;
       return true;
     });
 
@@ -295,8 +297,8 @@
 
     let html = `<table class="policy-table"><thead>
       <tr>
-        <th class="left sticky-col" rowspan="2" style="min-width:200px;border-right:2px solid var(--line);">상품 / 입수량</th>
-        <th rowspan="2" style="width:50px;border-right:2px solid var(--line);">품온</th>`;
+        <th class="left sticky-col" rowspan="2" style="min-width:200px;border-right:1px solid var(--line);">상품 / 입수량</th>
+        <th rowspan="2" style="width:50px;border-right:2px solid var(--line);position:sticky;left:200px;z-index:4;background:#fafbfa;">품온</th>`;
 
     // 채널별 헤더 - 가격 3종 × (EA단가+총판매가+이익률) = 9컬럼씩
     channels.forEach(c=>{
@@ -320,17 +322,17 @@
 
       // 상품 헤더 행
       html += `<tr class="product-header">
-        <td class="left sticky-col" style="border-right:2px solid var(--line);">
+        <td class="left sticky-col" style="border-right:1px solid var(--line);">
           <strong>${esc(prod.code||'')} ${esc(prod.name)}</strong>
           <span style="font-size:11px;color:var(--muted);margin-left:6px;">EA원가 ${comma(prod.unit_cost)}원</span>
         </td>
-        <td class="center" style="border-right:2px solid var(--line);">${prod.temperature}</td>`;
+        <td class="center" style="position:sticky;left:200px;z-index:2;background:#f0f7f2;border-right:2px solid var(--line);">${prod.temperature}</td>`;
       channels.forEach(()=>{ html += `<td colspan="9" style="border-right:2px solid var(--line);"></td>`; });
       html += `</tr>`;
 
       if(units.length===0){
-        html += `<tr class="no-data"><td class="sticky-col" style="border-right:2px solid var(--line);padding-left:20px;color:var(--muted);font-style:italic;text-align:left;">가격정책 미등록</td>
-          <td style="border-right:2px solid var(--line);"></td>`;
+        html += `<tr class="no-data"><td class="sticky-col" style="border-right:1px solid var(--line);padding-left:20px;color:var(--muted);font-style:italic;text-align:left;">가격정책 미등록</td>
+          <td style="position:sticky;left:200px;z-index:2;background:var(--panel);border-right:2px solid var(--line);"></td>`;
         channels.forEach(()=>{ html += `<td colspan="9" style="border-right:2px solid var(--line);text-align:center;color:var(--muted);">-</td>`; });
         html += `</tr>`;
       } else {
@@ -341,11 +343,11 @@
           const eaMp = qty>0 ? Math.round((unit.max_price||0)/qty) : 0;
 
           html += `<tr>
-            <td class="left sticky-col" style="padding-left:20px;border-right:2px solid var(--line);">
+            <td class="left sticky-col" style="padding-left:20px;border-right:1px solid var(--line);">
               ${qty}개입
               <span style="font-size:11px;color:var(--muted);margin-left:4px;">원가 ${comma((prod.unit_cost||0)*qty)}원</span>
             </td>
-            <td class="center" style="border-right:2px solid var(--line);">${prod.temperature}</td>`;
+            <td class="center" style="position:sticky;left:200px;z-index:2;background:var(--panel);border-right:2px solid var(--line);">${prod.temperature}</td>`;
 
           channels.forEach((ch,ci)=>{
             const rn = calcProfit(unit.normal_price, qty, prod, ch);
