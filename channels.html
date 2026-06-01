@@ -78,15 +78,21 @@
     .direct-section{grid-column:1/-1;display:none;}
     .direct-section.show{display:block;}
     .direct-section .sec-title{font-size:12px;font-weight:700;color:var(--accent);letter-spacing:.03em;margin-bottom:10px;padding-top:14px;border-top:1px solid var(--line);}
-    .dtable{width:100%;border-collapse:collapse;font-size:13px;}
+    .dtable{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed;}
+    .dtable col.col-temp{width:80px;}
+    .dtable col.col-val{width:auto;}
     .dtable th{padding:8px 10px;font-size:11.5px;color:var(--muted);font-weight:600;border-bottom:1px solid var(--line);background:#fafbfa;text-align:center;}
     .dtable th:first-child{text-align:left;}
     .dtable td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:center;}
     .dtable td:first-child{text-align:left;font-weight:600;font-size:13px;}
     .dtable tr:last-child td{border-bottom:none;}
-    .dtable input{width:100%;font-family:inherit;font-size:13px;padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:#fff;text-align:right;}
+    .dtable input{width:100%;font-family:inherit;font-size:13px;padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:#fff;text-align:right;min-width:0;box-sizing:border-box;}
     .dtable input:focus{outline:none;border-color:var(--accent);}
     .direct-hint{font-size:11px;color:var(--muted);margin-top:6px;}
+    /* combo 오버플로우 방지 */
+    .combo{display:flex;gap:8px;min-width:0;}
+    .combo select{flex:0 0 88px;min-width:0;}
+    .combo input{flex:1;min-width:0;}
   </style>
 </head>
 <body>
@@ -220,6 +226,11 @@
       <div class="direct-section" id="direct-section">
         <div class="sec-title">직납 채널 — 품온별 운반비율 · 유통사이익율</div>
         <table class="dtable">
+          <colgroup>
+            <col style="width:80px;">
+            <col>
+            <col>
+          </colgroup>
           <thead>
             <tr>
               <th>품온</th>
