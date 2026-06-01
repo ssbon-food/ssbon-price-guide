@@ -187,19 +187,9 @@
           <label>상품명 *</label>
           <input type="text" id="new-name" placeholder="예: 순수본 전복죽 500g" />
         </div>
-        <div class="g2">
-          <div class="fl">
-            <label>품온 *</label>
-            <select id="new-temp">
-              <option value="실온">실온</option>
-              <option value="냉장">냉장</option>
-              <option value="냉동">냉동</option>
-            </select>
-          </div>
-          <div class="fl">
-            <label>단량 (g)</label>
-            <input type="number" id="new-weight" placeholder="0" />
-          </div>
+        <div class="fl">
+          <label>단량 (g)</label>
+          <input type="number" id="new-weight" placeholder="0" />
         </div>
       </div>
 
@@ -477,9 +467,7 @@
       $('inp-unit-cost').value = 0;
       $('inp-normal-price').value = 0;
       // 품온 변경 시 disp-temp 동기화
-      $('disp-temp').value = $('new-temp').value;
-      $('new-temp').onchange = ()=>{ $('disp-temp').value = $('new-temp').value; };
-      $('disp-temp').onchange = ()=>{ $('new-temp').value = $('disp-temp').value; };
+      // 신규상품은 disp-temp(품온 드롭다운)를 직접 사용
       $('btn-add-row').style.display='block';
       renderUnitRows([]);
       renderResultTable();
@@ -567,9 +555,9 @@
   function addUnitRow(unit){
     const tbody = $('unit-rows');
     const tr = document.createElement('tr');
-    const eaCost = currentProduct?.unit_cost||0;
+    const eaCost = parseFloat($('inp-unit-cost').value)||(currentProduct?.unit_cost||0);
     const qty    = unit?.box_qty||1;
-    const totalCost = eaCost * qty;
+    const totalCost = Math.round(eaCost * qty);
 
     tr.innerHTML=`
       <td class="tl"><input type="number" class="qty" value="${qty}" min="1" /></td>
@@ -587,10 +575,11 @@
       </td>
       <td><button class="btn-del-row" title="삭제">✕</button></td>`;
 
-    // 입수량 변경 → 원가 재계산
+    // 입수량 변경 → 원가 재계산 (EA원가 입력칸 기준)
     tr.querySelector('.qty').addEventListener('input', e=>{
       const q = parseFloat(e.target.value)||1;
-      tr.querySelector('.cost').value = Math.round((currentProduct?.unit_cost||0)*q);
+      const eaCost = parseFloat($('inp-unit-cost').value)||0;
+      tr.querySelector('.cost').value = Math.round(eaCost * q);
       updateDiscLabels(tr);
       renderResultTable();
     });
@@ -617,10 +606,42 @@
   $('btn-add-row').addEventListener('click', ()=>{ addUnitRow(null); });
 
   // 판관비 변경 시 재계산
-  ['feeRate','adType','adValue','promoType','promoValue','hqType','hqValue','divType','divValue','inp-unit-cost','inp-normal-price']
+  ['feeRate','adType','adValue','promoType','promoValue','hqType','hqValue','divType','divValue']
     .forEach(id=>$(id) && $(id).addEventListener('input', renderResultTable));
   ['adType','promoType','hqType','divType']
     .forEach(id=>$(id) && $(id).addEventListener('change', renderResultTable));
+
+  // EA원가 변경 시 → 모든 입수행의 상품원가 자동 업데이트
+  $('inp-unit-cost') && $('inp-unit-cost').addEventListener('input', ()=>{
+    const eaCost = parseFloat($('inp-unit-cost').value)||0;
+    document.querySelectorAll('#unit-rows tr').forEach(tr=>{
+      const qtyInput = tr.querySelector('.qty');
+      const costInput = tr.querySelector('.cost');
+      if (qtyInput && costInput){
+        const qty = parseFloat(qtyInput.value)||1;
+        costInput.value = Math.round(eaCost * qty);
+      }
+    });
+    renderResultTable();
+  });
+
+  // 품온 변경 시 운반비 재계산
+  $('disp-temp') && $('disp-temp').addEventListener('change', ()=>{
+    if (currentChannel) {
+      const temp = $('disp-temp').value;
+      const isDirect = currentChannel.channel_type==='direct';
+      const fm = freightMaster[temp]||{consign:0,dRate:0,dDist:0};
+      if (isDirect){
+        $('disp-freight').value = fm.dRate+'% (직납)';
+        const distBox = $('dist-box');
+        distBox.style.display='block';
+        distBox.textContent=`직납 · 유통사이익율 ${fm.dDist}% · 운반비율 ${fm.dRate}% (${temp})`;
+      } else {
+        $('disp-freight').value = comma(fm.consign)+'원/박스';
+      }
+    }
+    renderResultTable();
+  });
 
   // ── 손익 계산 ──
   function getUnitRows(){
@@ -764,7 +785,7 @@
       const { data:newProd, error:pErr } = await sb.from('products').insert({
         code:         $('new-code').value.trim()||'',
         name:         newName,
-        temperature:  $('new-temp').value,
+        temperature:  $('disp-temp').value,
         unit_weight:  parseFloat($('new-weight').value)||0,
         unit_cost:    parseFloat($('inp-unit-cost').value)||0,
         normal_price: parseFloat($('inp-normal-price').value)||0,
