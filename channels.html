@@ -14,19 +14,19 @@
     }
     *{box-sizing:border-box;} html,body{margin:0;padding:0;}
     body{font-family:"Pretendard",-apple-system,"Malgun Gothic",sans-serif;background:var(--bg);color:var(--ink);font-size:15px;line-height:1.5;}
-    .ssbon-nav{background:#fff;border-bottom:1px solid var(--line);}
-    .ssbon-nav-inner{max-width:1180px;margin:0 auto;padding:0 18px;min-height:48px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;}
-    .ssbon-nav-brand{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:700;color:var(--ink);white-space:nowrap;}
-    .ssbon-nav-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);display:inline-block;}
-    .ssbon-nav-links{display:flex;gap:6px;}
-    .ssbon-nav-links a{text-decoration:none;font-size:14px;font-weight:600;color:var(--muted);padding:7px 13px;border-radius:8px;transition:.12s;}
-    .ssbon-nav-links a:hover{background:#f0f3f0;color:var(--ink);}
-    .ssbon-nav-links a.active{background:var(--accent-soft);color:var(--accent);}
+    
+    
+    
+    
+    
+    
+    
+    
     header{background:var(--panel);border-bottom:1px solid var(--line);padding:14px 22px;display:flex;align-items:center;justify-content:space-between;gap:16px;}
     .brand h1{font-size:17px;margin:0;font-weight:700;}
     .brand small{color:var(--muted);font-weight:500;}
     .who{display:flex;align-items:center;gap:12px;font-size:13px;color:var(--muted);}
-    .role-badge{background:var(--accent-soft);color:var(--accent);padding:3px 9px;border-radius:999px;font-weight:600;font-size:12px;}
+    
     main{max-width:1180px;margin:24px auto;padding:0 18px;}
     .toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px;}
     .toolbar .search{flex:1;min-width:200px;padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:var(--panel);font-size:14px;}
@@ -81,29 +81,51 @@
     .direct-section.show{display:block;}
     .direct-section .sec-title{font-size:12px;font-weight:700;color:var(--accent);letter-spacing:.03em;margin-bottom:10px;padding-top:14px;border-top:1px solid var(--line);}
     .direct-hint{font-size:11px;color:var(--muted);margin-top:6px;}
+    /* ── 공통 NAV ── */
+  .ssbon-nav{background:#fff;border-bottom:1px solid #e3e8e3;position:sticky;top:0;z-index:100;}
+  .ssbon-nav-inner{max-width:1400px;margin:0 auto;padding:0 20px;height:52px;display:flex;align-items:center;}
+  .ssbon-nav-brand{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:#1d2620;white-space:nowrap;margin-right:24px;text-decoration:none;}
+  .ssbon-nav-dot{width:8px;height:8px;border-radius:50%;background:#2f7d4f;display:inline-block;flex-shrink:0;}
+  .ssbon-nav-links{display:flex;gap:2px;flex:1;}
+  .ssbon-nav-links a{text-decoration:none;font-size:13px;font-weight:600;color:#6b7770;padding:6px 12px;border-radius:8px;transition:.12s;white-space:nowrap;}
+  .ssbon-nav-links a:hover{background:#f0f3f0;color:#1d2620;}
+  .ssbon-nav-links a.active{background:#e7f2ec;color:#2f7d4f;}
+  .ssbon-nav-right{margin-left:auto;display:flex;align-items:center;gap:8px;padding-left:16px;}
+  .ssbon-who{font-size:12px;color:#6b7770;white-space:nowrap;}
+  .ssbon-role{background:#e7f2ec;color:#2f7d4f;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;}
+  .ssbon-nav-btn{font-family:inherit;font-size:12px;font-weight:600;padding:5px 12px;border-radius:8px;cursor:pointer;color:#2f7d4f;background:#fff;border:1px solid #e3e8e3;}
+  .ssbon-nav-btn:hover{background:#f0f3f0;}
+  .ssbon-nav-btn.primary{color:#fff;background:#2f7d4f;border-color:#2f7d4f;}
+  .ssbon-nav-btn.primary:hover{background:#266a42;}
   </style>
 </head>
 <body>
 
-<div class="ssbon-nav">
+<nav class="ssbon-nav">
   <div class="ssbon-nav-inner">
-    <span class="ssbon-nav-brand"><i class="ssbon-nav-dot"></i>순수본 가격도구</span>
-    <nav class="ssbon-nav-links">
+    <a class="ssbon-nav-brand" href="simulator.html"><span class="ssbon-nav-dot"></span>순수본 가격도구</a>
+    <div class="ssbon-nav-links">
       <a href="simulator.html" data-nav="simulator.html">가격 시뮬레이터</a>
       <a href="pricing.html" data-nav="pricing.html">가격정책</a>
       <a href="products.html" data-nav="products.html">상품 마스터</a>
       <a href="channels.html" data-nav="channels.html">채널 마스터</a>
       <a href="freight.html" data-nav="freight.html">운반비 마스터</a>
-    </nav>
+    </div>
+    <div class="ssbon-nav-right">
+      <span class="ssbon-who" id="nav-who"></span>
+      <span class="ssbon-role" id="nav-role" style="display:none;"></span>
+      <button class="ssbon-nav-btn primary" id="nav-admin-btn" style="display:none;" onclick="location.href='admin.html'">사용자 관리</button>
+      <button class="ssbon-nav-btn" id="nav-logout-btn" style="display:none;">로그아웃</button>
+    </div>
   </div>
-</div>
+</nav>
 <script>
-  (function(){
-    var page=location.pathname.split("/").pop()||"index.html";
-    document.querySelectorAll('.ssbon-nav-links a[data-nav]').forEach(function(a){
-      if(a.getAttribute("data-nav")===page) a.classList.add("active");
-    });
-  })();
+(function(){
+  var p=location.pathname.split('/').pop()||'index.html';
+  document.querySelectorAll('.ssbon-nav-links a[data-nav]').forEach(function(a){
+    if(a.getAttribute('data-nav')===p) a.classList.add('active');
+  });
+})();
 </script>
 
 <div id="gate" class="gate" style="display:none;">
@@ -114,14 +136,7 @@
 </div>
 
 <div id="app" style="display:none;">
-  <header>
-    <div class="brand"><h1>채널 마스터 <small>· 순수본 식품본부</small></h1></div>
-    <div class="who">
-      <span id="who-name"></span>
-      <span class="role-badge" id="who-role"></span>
-      <button class="btn-ghost btn-sm" id="btn-logout">로그아웃</button>
-    </div>
-  </header>
+  
   <main>
     <div class="toolbar">
       <input class="search" id="search" placeholder="채널명으로 검색…" />
@@ -247,6 +262,20 @@
   const SUPABASE_URL = "https://ngvgzfhvjaowwhnmmpex.supabase.co";
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ndmd6Zmh2amFvd3dobm1tcGV4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMzgyNjQsImV4cCI6MjA5NTYxNDI2NH0.jO5Ab8trHPyamHhYFXi9UWvQ217pDJW9qplBWph8cgg";
   const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  function initNav(user) {
+    var who = document.getElementById('nav-who');
+    var role = document.getElementById('nav-role');
+    var adminBtn = document.getElementById('nav-admin-btn');
+    var logoutBtn = document.getElementById('nav-logout-btn');
+    if(who) who.textContent = (user.name||user.email||'');
+    if(role){ role.textContent = user.role||''; role.style.display='inline'; }
+    if(adminBtn) adminBtn.style.display = (user.role==='admin')?'inline-block':'none';
+    if(logoutBtn){
+      logoutBtn.style.display='inline-block';
+      logoutBtn.onclick = async function(){ await sb.auth.signOut(); location.href='index.html'; };
+    }
+  }
 
   const TEMPS = [{ko:'실온',id:'amb'},{ko:'냉장',id:'chi'},{ko:'냉동',id:'fro'}];
   let me=null, canEdit=false, channels=[], editingId=null;
