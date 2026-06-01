@@ -94,9 +94,57 @@
     .r-bad  { background:var(--bad-bg);  } .r-bad  .profit, .r-bad  .rate, .r-bad  .label  { color:var(--bad); }
     .note { font-size:12px; color:var(--muted); margin-top:18px; }
   </style>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 
 <body>
+  <!-- 로그인/승인 확인 게이트 (확인될 때까지 화면 전체를 덮음) -->
+  <div id="authGate" style="position:fixed; inset:0; z-index:9999; background:#f4f1ea;
+       display:flex; align-items:center; justify-content:center; text-align:center; padding:24px;">
+    <div>
+      <p id="gateMsg" style="font-family:'Gowun Batang',serif; font-size:22px; color:#2b2620;">로그인 확인 중...</p>
+      <p id="gateSub" style="font-size:13.5px; color:#8a8073; margin-top:10px; line-height:1.6;"></p>
+      <button id="gateBtn" style="display:none; margin-top:18px; font-family:inherit; font-size:14px; font-weight:600;
+        color:#fff; background:#3f6b46; border:none; border-radius:9px; padding:11px 22px; cursor:pointer;">로그아웃</button>
+    </div>
+  </div>
+
+  <!-- 우측 상단 로그아웃 (통과 후에만 보임) -->
+  <button id="logoutBtn" style="position:fixed; top:16px; right:18px; z-index:50; display:none;
+    font-family:inherit; font-size:12.5px; font-weight:600; color:#3f6b46; background:#fff;
+    border:1px solid #e2dccf; border-radius:8px; padding:8px 12px; cursor:pointer;">로그아웃</button>
+
+  <script>
+    // 진입 관문: 로그인 + 활성(승인) 사용자만 통과
+    (function () {
+      const sb = window.supabase.createClient(
+        "https://ngvgzfhvjaowwhnmmpex.supabase.co",
+        "sb_publishable_Mxqz7HBIPJNp0UQUgjsmiA_lHSfCh-A"
+      );
+      async function logout(){ await sb.auth.signOut(); window.location.href = './index.html'; }
+      document.getElementById('logoutBtn').addEventListener('click', logout);
+      document.getElementById('gateBtn').addEventListener('click', logout);
+
+      (async function guard(){
+        const { data: { session } } = await sb.auth.getSession();
+        if (!session) { window.location.href = './index.html'; return; }   // 로그인 안 됨 → 로그인 페이지
+        let p = null;
+        try {
+          const r = await sb.from('users').select('role,is_active,email').eq('id', session.user.id).single();
+          p = r.data;
+        } catch (e) {}
+        if (p && p.is_active && p.role !== 'pending') {
+          document.getElementById('authGate').style.display = 'none';      // 통과 → 게이트 제거
+          document.getElementById('logoutBtn').style.display = 'block';
+        } else {
+          document.getElementById('gateMsg').textContent = '승인 대기 중입니다';
+          document.getElementById('gateSub').textContent = '관리자 승인이 완료되면 이용할 수 있습니다.';
+          document.getElementById('gateBtn').style.display = 'inline-block';
+        }
+      })();
+    })();
+  </script>
+
   <div class="wrap">
     <header>
       <p class="eyebrow">순수본 · 식품본부</p>
