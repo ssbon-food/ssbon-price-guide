@@ -427,6 +427,7 @@
   const $ = id => document.getElementById(id);
   const won = n => Math.round(n).toLocaleString('ko-KR')+'원';
   const pct = n => n.toFixed(1)+'%';
+  const esc = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   const comma = n => Number(n||0).toLocaleString('ko-KR');
   const numV = id => parseFloat($(id).value)||0;
   $('gateBtn').addEventListener('click',   async()=>{ await sb.auth.signOut(); location.href='./index.html'; });
@@ -456,6 +457,7 @@
   async function loadProducts(){
     const { data } = await sb.from('products').select('*').eq('is_active',true).order('code');
     if (!data) return;
+    allProducts = data;
     const sel = $('sel-product');
     sel.innerHTML = '<option value="">-- 상품 선택 --</option>';
     data.forEach(p=>{
@@ -469,6 +471,7 @@
   }
 
   let allChannels = [];
+  let allProducts = [];
 
   async function loadChannels(){
     const { data } = await sb.from('channels').select('*').eq('is_active',true).order('name');
