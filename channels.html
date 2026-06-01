@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<!--
+  =====================================================================
+  순수본 식품본부 · 채널 마스터 (channels.html)
+  - 등록된 판매처(채널)를 표로 보여주고, 추가/수정/활성토글
+  - 저장 위치: Supabase 'channels' 테이블
+  - 권한: master/admin 만 추가·수정 가능, 그 외에는 조회만
+  - 품온별로 달라지는 운반비·유통사이익율은 여기 없음 → '운반비마스터'가 담당
+  - 토글 저장값은 영어 코드(consign/direct, supply/vat, rate/fixed)이고
+    화면에는 한글(위탁/직납 등)로 보여줍니다.
+  =====================================================================
+-->
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>채널 마스터 · 순수본 식품본부</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    :root {
+      --bg:#f4f6f3; --panel:#ffffff; --ink:#1d2620; --muted:#6b7770; --line:#e3e8e3;
+      --accent:#2f7d4f; --accent-soft:#e7f2ec; --warn:#b4441f;
+      --radius:12px; --shadow:0 1px 2px rgba(20,40,30,.05), 0 8px 24px rgba(20,40,30,.06);
+    }
+    * { box-sizing:border-box; }
+    html, body { margin:0; padding:0; }
+    body { font-family:"Pretendard", -apple-system, "Malgun Gothic", sans-serif; background:var(--bg); color:var(--ink); font-size:15px; line-height:1.5; }
+
+    /* ===== 공통 상단 메뉴 ===== */
+    .ssbon-nav { background:#fff; border-bottom:1px solid var(--line); }
+    .ssbon-nav-inner { max-width:1180px; margin:0 auto; padding:0 18px; min-height:48px; display:flex; align-items:center; gap:20px; flex-wrap:wrap; }
+    .ssbon-nav-brand { display:flex; align-items:center; gap:7px; font-size:13px; font-weight:700; color:var(--ink); white-space:nowrap; }
+    .ssbon-nav-dot { width:8px; height:8px; border-radius:50%; background:var(--accent); display:inline-block; }
+    .ssbon-nav-links { display:flex; gap:6px; }
+    .ssbon-nav-links a { text-decoration:none; font-size:14px; font-weight:600; color:var(--muted); padding:7px 13px; border-radius:8px; transition:.12s; }
+    .ssbon-nav-links a:hover { background:#f0f3f0; color:var(--ink); }
+    .ssbon-nav-links a.active { background:var(--accent-soft); color:var(--accent); }
+
+    /* ===== 페이지 헤더 ===== */
+    header { background:var(--panel); border-bottom:1px solid var(--line); padding:14px 22px; display:flex; align-items:center; justify-content:space-between; gap:16px; }
+    .brand { display:flex; align-items:center; gap:10px; }
+    .brand h1 { font-size:17px; margin:0; font-weight:700; letter-spacing:-.2px; }
+    .brand small { color:var(--muted); font-weight:500; }
+    .who { display:flex; align-items:center; gap:12px; font-size:13px; color:var(--muted); }
+    .role-badge { background:var(--accent-soft); color:var(--accent); padding:3px 9px; border-radius:999px; font-weight:600; font-size:12px; }
+
+    main { max-width:1180px; margin:24px auto; padding:0 18px; }
+
+    .toolbar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:16px; }
+    .toolbar .search { flex:1; min-width:200px; padding:10px 14px; border:1px solid var(--line); border-radius:10px; background:var(--panel); font-size:14px; }
+    .toolbar .search:focus { outline:none; border-color:var(--accent); }
+    .chk { display:flex; align-items:center; gap:6px; color:var(--muted); font-size:13px; cursor:pointer; user-select:none; }
+
+    button { font-family:inherit; cursor:pointer; border:none; border-radius:10px; font-size:14px; font-weight:600; padding:10px 16px; transition:.12s; }
+    .btn-primary { background:var(--accent); color:#fff; }
+    .btn-primary:hover { background:#266a42; }
+    .btn-ghost { background:var(--panel); color:var(--ink); border:1px solid var(--line); }
+    .btn-ghost:hover { background:#f0f3f0; }
+    .btn-sm { padding:6px 12px; font-size:13px; }
+
+    .card { background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); overflow-x:auto; }
+    table { width:100%; border-collapse:collapse; min-width:920px; }
+    thead th { text-align:left; font-size:12.5px; color:var(--muted); font-weight:600; padding:12px 12px; border-bottom:1px solid var(--line); white-space:nowrap; background:#fafbfa; }
+    th.num, td.num { text-align:right; }
+    tbody td { padding:13px 12px; border-bottom:1px solid var(--line); font-size:14px; white-space:nowrap; }
+    tbody tr:last-child td { border-bottom:none; }
+    tbody tr:hover { background:#f7faf8; }
+    tbody tr.inactive { opacity:.5; }
+    .cname { font-weight:600; color:var(--ink); }
+    .type-tag { font-size:12px; padding:2px 8px; border-radius:6px; font-weight:600; }
+    .type-consign { background:#eef1ef; color:#45504a; }
+    .type-direct { background:#e7f2ec; color:var(--accent); }
+    .sub { color:var(--muted); font-size:12px; }
+    .status-on { color:var(--accent); font-weight:600; font-size:13px; }
+    .status-off { color:var(--warn); font-weight:600; font-size:13px; }
+    .empty { padding:48px 20px; text-align:center; color:var(--muted); }
+
+    /* ===== 게이트 ===== */
+    .gate { max-width:420px; margin:80px auto; text-align:center; padding:0 20px; }
+    .gate .icon { font-size:40px; }
+    .gate h2 { margin:14px 0 8px; }
+    .gate p { color:var(--muted); margin:0 0 20px; }
+
+    /* ===== 모달 ===== */
+    .overlay { position:fixed; inset:0; background:rgba(20,30,25,.45); display:none; align-items:center; justify-content:center; z-index:50; padding:20px; }
+    .overlay.show { display:flex; }
+    .modal { background:var(--panel); border-radius:16px; width:100%; max-width:560px; box-shadow:0 20px 60px rgba(0,0,0,.25); max-height:90vh; overflow:auto; }
+    .modal-head { padding:20px 24px; border-bottom:1px solid var(--line); font-size:17px; font-weight:700; }
+    .modal-body { padding:22px 24px; display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+    .field { display:flex; flex-direction:column; gap:6px; }
+    .field.full { grid-column:1 / -1; }
+    .field label { font-size:13px; color:var(--muted); font-weight:600; }
+    .field label .req { color:var(--warn); }
+    .field input, .field select { font-family:inherit; font-size:14px; padding:10px 12px; border:1px solid var(--line); border-radius:9px; background:#fff; color:var(--ink); }
+    .field input:focus, .field select:focus { outline:none; border-color:var(--accent); }
+    .field input.num { text-align:right; }
+    .combo { display:flex; gap:8px; }
+    .combo select { flex:0 0 96px; }
+    .combo input { flex:1; }
+    .subhead { grid-column:1 / -1; font-size:12px; font-weight:700; color:var(--accent); letter-spacing:.03em; margin-top:4px; border-top:1px solid var(--line); padding-top:14px; }
+    .modal-foot { padding:16px 24px; border-top:1px solid var(--line); display:flex; justify-content:flex-end; gap:10px; }
+
+    @media (max-width:560px) { .modal-body { grid-template-columns:1fr; } }
+  </style>
+</head>
+
+<body>
+  <!-- 공통 상단 메뉴 -->
+  <div class="ssbon-nav">
+    <div class="ssbon-nav-inner">
+      <span class="ssbon-nav-brand"><i class="ssbon-nav-dot"></i>순수본 가격도구</span>
+      <nav class="ssbon-nav-links">
+        <a href="simulator.html" data-nav="simulator.html">가격 시뮬레이터</a>
+        <a href="products.html" data-nav="products.html">상품 마스터</a>
+        <a href="channels.html" data-nav="channels.html">채널 마스터</a>
+      </nav>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var page = location.pathname.split("/").pop() || "index.html";
+      document.querySelectorAll('.ssbon-nav-links a[data-nav]').forEach(function (a) {
+        if (a.getAttribute("data-nav") === page) a.classList.add("active");
+      });
+    })();
+  </script>
+
+  <!-- 게이트(로그인/승인 안내) -->
+  <div id="gate" class="gate" style="display:none;">
+    <div class="icon" id="gate-icon">🔒</div>
+    <h2 id="gate-title">확인 중…</h2>
+    <p id="gate-msg"></p>
+    <button class="btn-primary" id="gate-btn" style="display:none;"></button>
+  </div>
+
+  <!-- 앱 화면 -->
+  <div id="app" style="display:none;">
+    <header>
+      <div class="brand">
+        <h1>채널 마스터 <small>· 순수본 식품본부</small></h1>
+      </div>
+      <div class="who">
+        <span id="who-name"></span>
+        <span class="role-badge" id="who-role"></span>
+        <button class="btn-ghost btn-sm" id="btn-logout">로그아웃</button>
+      </div>
+    </header>
+
+    <main>
+      <div class="toolbar">
+        <input class="search" id="search" placeholder="채널명으로 검색…" />
+        <label class="chk"><input type="checkbox" id="show-inactive" /> 비활성 포함</label>
+        <button class="btn-primary" id="btn-new" style="display:none;">+ 새 채널</button>
+      </div>
+
+      <div class="card">
+        <table>
+          <thead>
+            <tr>
+              <th>채널명</th>
+              <th>유형</th>
+              <th>지급수수료</th>
+              <th class="num">광고선전비</th>
+              <th class="num">판매촉진비</th>
+              <th class="num">본부공통비</th>
+              <th class="num">부문공통비</th>
+              <th class="num">기타고정비</th>
+              <th>상태</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+        <div class="empty" id="empty" style="display:none;">등록된 채널이 없어요.</div>
+      </div>
+    </main>
+  </div>
+
+  <!-- 모달 -->
+  <div class="overlay" id="overlay">
+    <div class="modal">
+      <div class="modal-head" id="modal-title">새 채널</div>
+      <div class="modal-body">
+        <div class="field full">
+          <label>채널명 <span class="req">*</span></label>
+          <input id="f-name" placeholder="예: 쿠팡 로켓배송" />
+        </div>
+        <div class="field">
+          <label>채널 유형</label>
+          <select id="f-chtype">
+            <option value="consign">위탁채널</option>
+            <option value="direct">직납채널</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>수수료 부과 기준</label>
+          <select id="f-base">
+            <option value="supply">공급가 기준</option>
+            <option value="vat">VAT포함가 기준</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>지급수수료 (%)</label>
+          <input id="f-fee" class="num" type="number" step="any" placeholder="0" />
+        </div>
+        <div class="field">
+          <label>기타 고정비 (원)</label>
+          <input id="f-other" class="num" type="number" step="any" placeholder="0" />
+        </div>
+
+        <div class="subhead">직접 판관비</div>
+        <div class="field">
+          <label>광고선전비</label>
+          <div class="combo">
+            <select id="f-adType"><option value="rate">정률 %</option><option value="fixed">정액 원</option></select>
+            <input id="f-adValue" class="num" type="number" step="any" placeholder="0" />
+          </div>
+        </div>
+        <div class="field">
+          <label>판매촉진비</label>
+          <div class="combo">
+            <select id="f-promoType"><option value="rate">정률 %</option><option value="fixed">정액 원</option></select>
+            <input id="f-promoValue" class="num" type="number" step="any" placeholder="0" />
+          </div>
+        </div>
+
+        <div class="subhead">간접 판관비</div>
+        <div class="field">
+          <label>본부공통비</label>
+          <div class="combo">
+            <select id="f-hqType"><option value="rate">정률 %</option><option value="fixed">정액 원</option></select>
+            <input id="f-hqValue" class="num" type="number" step="any" placeholder="0" />
+          </div>
+        </div>
+        <div class="field">
+          <label>부문공통비</label>
+          <div class="combo">
+            <select id="f-divType"><option value="rate">정률 %</option><option value="fixed">정액 원</option></select>
+            <input id="f-divValue" class="num" type="number" step="any" placeholder="0" />
+          </div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn-ghost" id="btn-cancel">취소</button>
+        <button class="btn-primary" id="btn-save">저장</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // =================================================================
+    //  0. Supabase 연결 정보 (products.html과 동일한 값으로 미리 채움)
+    // =================================================================
+    const SUPABASE_URL = "https://ngvgzfhvjaowwhnmmpex.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ndmd6Zmh2amFvd3dobm1tcGV4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMzgyNjQsImV4cCI6MjA5NTYxNDI2NH0.jO5Ab8trHPyamHhYFXi9UWvQ217pDJW9qplBWph8cgg";
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // =================================================================
+    //  1. 공용 상태 변수
+    // =================================================================
+    let me = null;          // 로그인한 내 정보
+    let canEdit = false;    // master/admin 여부
+    let channels = [];      // 불러온 채널 목록
+    let editingId = null;   // 수정 중인 채널 id (null = 새 채널)
+
+    const $ = (id) => document.getElementById(id);
+    const comma = (n) => Number(n || 0).toLocaleString("ko-KR");
+    const numVal = (id) => parseFloat($(id).value) || 0;   // 입력칸의 숫자 읽기
+
+    // 표 표시용 헬퍼들
+    const typeTag = (t) => t === "direct"
+      ? '<span class="type-tag type-direct">직납</span>'
+      : '<span class="type-tag type-consign">위탁</span>';
+    const baseLabel = (b) => (b === "vat" ? "VAT포함가" : "공급가");
+    // 정률이면 "2%", 정액이면 "500원" 으로 표시
+    const tv = (type, value) => type === "fixed" ? (comma(value) + "원") : ((value || 0) + "%");
+
+    // =================================================================
+    //  2. 시작: 로그인·권한 확인
+    // =================================================================
+    async function init() {
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session) {
+        return showGate("🔒", "로그인이 필요해요", "먼저 로그인 페이지에서 로그인해 주세요.", "로그인하러 가기", goLogin);
+      }
+      const { data, error } = await sb.from("users").select("*").eq("id", session.user.id).single();
+      if (error || !data) {
+        return showGate("⚠️", "사용자 정보를 찾을 수 없어요", "관리자에게 계정 등록을 요청해 주세요.", "로그아웃", logout);
+      }
+      me = data;
+      if (me.role === "pending" || me.is_active === false) {
+        return showGate("⏳", "승인 대기 중이에요", "관리자가 승인하면 사용할 수 있어요.", "로그아웃", logout);
+      }
+      canEdit = (me.role === "master" || me.role === "admin");
+      showApp();
+      await loadChannels();
+    }
+
+    // =================================================================
+    //  3. 화면 전환
+    // =================================================================
+    function showGate(icon, title, msg, btnText, btnFn) {
+      $("app").style.display = "none";
+      $("gate").style.display = "block";
+      $("gate-icon").textContent = icon;
+      $("gate-title").textContent = title;
+      $("gate-msg").textContent = msg;
+      const b = $("gate-btn");
+      if (btnText) { b.style.display = "inline-block"; b.textContent = btnText; b.onclick = btnFn; }
+      else { b.style.display = "none"; }
+    }
+    function showApp() {
+      $("gate").style.display = "none";
+      $("app").style.display = "block";
+      $("who-name").textContent = me.name || me.email || "사용자";
+      $("who-role").textContent = me.role;
+      $("btn-new").style.display = canEdit ? "inline-block" : "none";
+    }
+    function goLogin() { location.href = "index.html"; }
+    async function logout() { await sb.auth.signOut(); goLogin(); }
+
+    // =================================================================
+    //  4. 채널 목록 불러오기
+    // =================================================================
+    async function loadChannels() {
+      const { data, error } = await sb.from("channels").select("*").order("name", { ascending: true });
+      if (error) { alert("채널을 불러오지 못했어요: " + error.message); return; }
+      channels = data || [];
+      renderTable();
+    }
+
+    // =================================================================
+    //  5. 표 그리기
+    // =================================================================
+    function renderTable() {
+      const keyword = $("search").value.trim().toLowerCase();
+      const includeInactive = $("show-inactive").checked;
+
+      const list = channels.filter((c) => {
+        if (!includeInactive && c.is_active === false) return false;
+        if (!keyword) return true;
+        return (c.name || "").toLowerCase().includes(keyword);
+      });
+
+      const tbody = $("rows");
+      tbody.innerHTML = "";
+      $("empty").style.display = list.length ? "none" : "block";
+
+      list.forEach((c) => {
+        const tr = document.createElement("tr");
+        if (c.is_active === false) tr.className = "inactive";
+        tr.innerHTML = `
+          <td class="cname">${escapeHtml(c.name)}</td>
+          <td>${typeTag(c.channel_type)}</td>
+          <td>${(c.commission_rate || 0)}% <span class="sub">/ ${baseLabel(c.commission_base)}</span></td>
+          <td class="num">${tv(c.ad_type, c.ad_value)}</td>
+          <td class="num">${tv(c.promotion_type, c.promotion_value)}</td>
+          <td class="num">${tv(c.hq_type, c.hq_value)}</td>
+          <td class="num">${tv(c.div_type, c.div_value)}</td>
+          <td class="num">${comma(c.other_fixed)}원</td>
+          <td>${c.is_active === false
+              ? '<span class="status-off">비활성</span>'
+              : '<span class="status-on">활성</span>'}</td>
+          <td></td>`;
+
+        if (canEdit) {
+          const cell = tr.lastElementChild;
+          const edit = document.createElement("button");
+          edit.className = "btn-ghost btn-sm";
+          edit.textContent = "수정";
+          edit.onclick = () => openModal(c);
+          cell.appendChild(edit);
+
+          const toggle = document.createElement("button");
+          toggle.className = "btn-ghost btn-sm";
+          toggle.style.marginLeft = "6px";
+          toggle.textContent = c.is_active === false ? "활성화" : "비활성";
+          toggle.onclick = () => toggleActive(c);
+          cell.appendChild(toggle);
+        }
+        tbody.appendChild(tr);
+      });
+    }
+
+    function escapeHtml(s) {
+      return String(s ?? "").replace(/[&<>"']/g, (ch) =>
+        ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+    }
+
+    // =================================================================
+    //  6. 모달 열기 (새 채널 / 수정)
+    // =================================================================
+    function openModal(c) {
+      editingId = c ? c.id : null;
+      $("modal-title").textContent = c ? "채널 수정" : "새 채널";
+
+      $("f-name").value     = c ? c.name : "";
+      $("f-chtype").value   = c ? (c.channel_type || "consign") : "consign";
+      $("f-base").value     = c ? (c.commission_base || "supply") : "supply";
+      $("f-fee").value      = c ? (c.commission_rate ?? "") : "";
+      $("f-other").value    = c ? (c.other_fixed ?? "") : "";
+      $("f-adType").value   = c ? (c.ad_type || "rate") : "rate";
+      $("f-adValue").value  = c ? (c.ad_value ?? "") : "";
+      $("f-promoType").value  = c ? (c.promotion_type || "rate") : "rate";
+      $("f-promoValue").value = c ? (c.promotion_value ?? "") : "";
+      $("f-hqType").value   = c ? (c.hq_type || "rate") : "rate";
+      $("f-hqValue").value  = c ? (c.hq_value ?? "") : "";
+      $("f-divType").value  = c ? (c.div_type || "rate") : "rate";
+      $("f-divValue").value = c ? (c.div_value ?? "") : "";
+
+      $("overlay").classList.add("show");
+    }
+    function closeModal() { $("overlay").classList.remove("show"); }
+
+    // =================================================================
+    //  7. 저장 (추가 = insert / 수정 = update)
+    // =================================================================
+    async function saveChannel() {
+      const payload = {
+        name: $("f-name").value.trim(),
+        channel_type: $("f-chtype").value,
+        commission_rate: numVal("f-fee"),
+        commission_base: $("f-base").value,
+        ad_type: $("f-adType").value,
+        ad_value: numVal("f-adValue"),
+        promotion_type: $("f-promoType").value,
+        promotion_value: numVal("f-promoValue"),
+        hq_type: $("f-hqType").value,
+        hq_value: numVal("f-hqValue"),
+        div_type: $("f-divType").value,
+        div_value: numVal("f-divValue"),
+        other_fixed: numVal("f-other"),
+        updated_by: me.id,
+        updated_at: new Date().toISOString(),
+      };
+
+      if (!payload.name) { alert("채널명은 꼭 입력해야 해요."); return; }
+
+      let error;
+      if (editingId === null) {
+        if (channels.some((c) => c.name === payload.name)) {
+          alert("이미 같은 이름의 채널이 있어요. 다른 이름을 사용해 주세요.");
+          return;
+        }
+        payload.created_by = me.id;
+        ({ error } = await sb.from("channels").insert(payload));
+      } else {
+        ({ error } = await sb.from("channels").update(payload).eq("id", editingId));
+      }
+
+      if (error) { alert("저장 실패: " + error.message); return; }
+      closeModal();
+      await loadChannels();
+    }
+
+    // =================================================================
+    //  8. 활성 / 비활성 토글
+    // =================================================================
+    async function toggleActive(c) {
+      const next = !(c.is_active !== false);
+      const word = next ? "활성화" : "비활성";
+      if (!confirm(`'${c.name}' 채널을 ${word} 할까요?`)) return;
+      const { error } = await sb.from("channels")
+        .update({ is_active: next, updated_by: me.id, updated_at: new Date().toISOString() })
+        .eq("id", c.id);
+      if (error) { alert("처리 실패: " + error.message); return; }
+      await loadChannels();
+    }
+
+    // =================================================================
+    //  9. 버튼 연결 + 시작
+    // =================================================================
+    $("btn-new").onclick = () => openModal(null);
+    $("btn-cancel").onclick = closeModal;
+    $("btn-save").onclick = saveChannel;
+    $("btn-logout").onclick = logout;
+    $("search").addEventListener("input", renderTable);
+    $("show-inactive").addEventListener("change", renderTable);
+    $("overlay").addEventListener("click", (e) => { if (e.target.id === "overlay") closeModal(); });
+
+    init();
+  </script>
+</body>
+</html>
