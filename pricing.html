@@ -219,6 +219,7 @@
     if (p && p.is_active && p.role!=='pending'){
       me = p;
       $('authGate').style.display='none'; $('app').style.display='block';
+      initNav(p);
       
       $('who-info').textContent = (p.name||p.email||'')+(p.role?' · '+p.role:'');
       if(p.role==='admin') 
