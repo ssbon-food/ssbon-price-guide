@@ -2,280 +2,162 @@
 <!--
   =====================================================================
   순수본 식품본부 · 상품 가격/이익 시뮬레이터
-  파일: index.html  (로그인 페이지)
-  하는 일: 회사 이메일을 입력하면 로그인 링크를 메일로 보내준다.
+  파일: index.html  (로그인 페이지 · 이메일+비밀번호 방식)
+  - 가입: 회사 이메일 + 비밀번호로 즉시 가입 (메일 발송 없음)
+  - 로그인: 이메일 + 비밀번호
+  - 회사 도메인(@bongroup.co.kr)만 가입 허용
   =====================================================================
 -->
 <html lang="ko">
 <head>
-  <!-- 글자가 깨지지 않도록 한글 인코딩(UTF-8)을 지정 -->
   <meta charset="UTF-8" />
-  <!-- 휴대폰에서도 화면이 알맞게 보이도록 하는 설정 -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>순수본 가격 시뮬레이터 · 로그인</title>
-
-  <!-- 글꼴 불러오기 (제목용 + 본문용) -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet" />
-
   <style>
-    /* ---------- 색·간격 같은 공통 값을 한곳에 모아둠 ---------- */
     :root {
-      --bg:        #f4f1ea;   /* 배경: 따뜻한 미색 */
-      --ink:       #2b2620;   /* 기본 글자색: 짙은 갈색 */
-      --muted:     #8a8073;   /* 흐린 글자색 */
-      --line:      #e2dccf;   /* 옅은 구분선 */
-      --accent:    #3f6b46;   /* 강조색: 식품다운 깊은 녹색 */
-      --accent-dk: #2d4e32;   /* 강조색(더 진한 톤) */
-      --card:      #ffffff;   /* 카드(입력 상자) 배경 */
-      --danger:    #b4452f;   /* 오류 메시지 색 */
+      --bg:#f4f1ea; --ink:#2b2620; --muted:#8a8073; --line:#e2dccf;
+      --accent:#3f6b46; --accent-dk:#2d4e32; --card:#ffffff; --field:#fbf9f4; --danger:#b4452f;
     }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family:'IBM Plex Sans KR', sans-serif; background:var(--bg); color:var(--ink);
+      min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;
+      background-image:radial-gradient(var(--line) 1px, transparent 1px); background-size:22px 22px; }
+    .card { width:100%; max-width:420px; background:var(--card); border:1px solid var(--line);
+      border-radius:18px; padding:40px 36px; box-shadow:0 20px 50px -28px rgba(43,38,32,0.4); }
+    .eyebrow { font-size:12px; letter-spacing:0.14em; text-transform:uppercase; color:var(--accent); font-weight:600; margin-bottom:14px; }
+    h1 { font-family:'Gowun Batang', serif; font-size:26px; line-height:1.35; margin-bottom:10px; }
+    .desc { font-size:14px; color:var(--muted); line-height:1.6; margin-bottom:24px; }
 
-    /* 모든 요소의 여백 기준을 통일 (계산을 단순하게) */
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    /* 로그인/가입 탭 */
+    .tabs { display:flex; gap:6px; background:var(--field); border:1px solid var(--line);
+      border-radius:11px; padding:4px; margin-bottom:22px; }
+    .tab { flex:1; text-align:center; font-size:14px; font-weight:600; padding:9px; border-radius:8px;
+      cursor:pointer; color:var(--muted); border:none; background:transparent; font-family:inherit; }
+    .tab.active { background:var(--card); color:var(--accent); box-shadow:0 2px 6px -3px rgba(43,38,32,0.3); }
 
-    /* ---------- 화면 전체(배경) ---------- */
-    body {
-      font-family: 'IBM Plex Sans KR', sans-serif;
-      background: var(--bg);
-      color: var(--ink);
-      min-height: 100vh;          /* 화면 높이만큼 꽉 채움 */
-      display: flex;              /* 가운데 정렬을 위해 flex 사용 */
-      align-items: center;        /* 세로 가운데 */
-      justify-content: center;    /* 가로 가운데 */
-      padding: 24px;
-      /* 배경에 아주 옅은 점 무늬를 깔아 밋밋함을 줄임 */
-      background-image: radial-gradient(var(--line) 1px, transparent 1px);
-      background-size: 22px 22px;
-    }
+    label { display:block; font-size:13px; font-weight:600; margin-bottom:8px; margin-top:14px; }
+    input { width:100%; font-family:inherit; font-size:15px; padding:13px 15px; border:1px solid var(--line);
+      border-radius:10px; background:var(--field); color:var(--ink); transition:border-color 0.15s, box-shadow 0.15s; }
+    input:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(63,107,70,0.12); }
 
-    /* ---------- 로그인 카드(가운데 흰 상자) ---------- */
-    .card {
-      width: 100%;
-      max-width: 420px;           /* 너무 넓어지지 않게 제한 */
-      background: var(--card);
-      border: 1px solid var(--line);
-      border-radius: 18px;
-      padding: 40px 36px;
-      box-shadow: 0 20px 50px -28px rgba(43, 38, 32, 0.4);
-    }
+    button.submit { width:100%; margin-top:20px; font-family:inherit; font-size:15px; font-weight:600;
+      color:#fff; background:var(--accent); border:none; border-radius:10px; padding:14px; cursor:pointer; transition:background 0.15s; }
+    button.submit:hover { background:var(--accent-dk); }
+    button.submit:disabled { opacity:0.55; cursor:not-allowed; }
 
-    /* 상단 작은 라벨 (회사/부서 표기) */
-    .eyebrow {
-      font-size: 12px;
-      letter-spacing: 0.14em;
-      text-transform: uppercase;
-      color: var(--accent);
-      font-weight: 600;
-      margin-bottom: 14px;
-    }
-
-    /* 제목 */
-    h1 {
-      font-family: 'Gowun Batang', serif;
-      font-size: 26px;
-      line-height: 1.35;
-      margin-bottom: 10px;
-    }
-
-    /* 제목 아래 설명 문구 */
-    .desc {
-      font-size: 14px;
-      color: var(--muted);
-      line-height: 1.6;
-      margin-bottom: 28px;
-    }
-
-    /* 입력칸 위 라벨 */
-    label {
-      display: block;
-      font-size: 13px;
-      font-weight: 600;
-      margin-bottom: 8px;
-    }
-
-    /* 이메일 입력칸 */
-    input[type="email"] {
-      width: 100%;
-      font-family: inherit;
-      font-size: 15px;
-      padding: 13px 15px;
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      background: #fbf9f4;
-      color: var(--ink);
-      transition: border-color 0.15s, box-shadow 0.15s;
-    }
-    /* 입력칸을 클릭(선택)했을 때 테두리 강조 */
-    input[type="email"]:focus {
-      outline: none;
-      border-color: var(--accent);
-      box-shadow: 0 0 0 3px rgba(63, 107, 70, 0.12);
-    }
-
-    /* 로그인 버튼 */
-    button {
-      width: 100%;
-      margin-top: 18px;
-      font-family: inherit;
-      font-size: 15px;
-      font-weight: 600;
-      color: #fff;
-      background: var(--accent);
-      border: none;
-      border-radius: 10px;
-      padding: 14px;
-      cursor: pointer;            /* 마우스를 올리면 손가락 모양 */
-      transition: background 0.15s;
-    }
-    button:hover { background: var(--accent-dk); }
-    /* 버튼을 누를 수 없을 때(처리 중) 흐리게 */
-    button:disabled { opacity: 0.55; cursor: not-allowed; }
-
-    /* 안내/오류 메시지가 표시될 자리 */
-    .message {
-      margin-top: 18px;
-      font-size: 13.5px;
-      line-height: 1.6;
-      min-height: 20px;           /* 메시지가 없어도 자리 유지 */
-    }
-    .message.ok    { color: var(--accent-dk); }
-    .message.error { color: var(--danger); }
-
-    /* 맨 아래 회사 표기 */
-    .footer {
-      margin-top: 30px;
-      padding-top: 18px;
-      border-top: 1px solid var(--line);
-      font-size: 12px;
-      color: var(--muted);
-      text-align: center;
-    }
+    .message { margin-top:18px; font-size:13.5px; line-height:1.6; min-height:20px; }
+    .message.ok { color:var(--accent-dk); } .message.error { color:var(--danger); }
+    .footer { margin-top:28px; padding-top:18px; border-top:1px solid var(--line); font-size:12px; color:var(--muted); text-align:center; }
   </style>
 </head>
 
 <body>
-  <!-- 화면에 보이는 로그인 카드 영역 -->
   <div class="card">
     <p class="eyebrow">순수본 · 식품본부</p>
     <h1>상품 가격·이익 시뮬레이터</h1>
-    <p class="desc">
-      회사 이메일을 입력하시면 로그인 링크를 보내드립니다.<br />
-      메일함에서 링크를 클릭하면 바로 들어올 수 있습니다.
-    </p>
+    <p class="desc" id="desc">회사 이메일과 비밀번호로 로그인하세요.</p>
 
-    <!-- 이메일 입력칸 -->
+    <!-- 로그인 / 가입 탭 -->
+    <div class="tabs">
+      <button class="tab active" id="tab-login">로그인</button>
+      <button class="tab" id="tab-signup">가입</button>
+    </div>
+
     <label for="email">회사 이메일</label>
-    <input
-      type="email"
-      id="email"
-      placeholder="name@bongroup.co.kr"
-      autocomplete="email"
-    />
+    <input type="email" id="email" placeholder="name@bongroup.co.kr" autocomplete="email" />
 
-    <!-- 로그인 링크 보내기 버튼 -->
-    <button id="loginBtn">로그인 링크 받기</button>
+    <label for="password">비밀번호</label>
+    <input type="password" id="password" placeholder="비밀번호 (6자 이상)" autocomplete="current-password" />
 
-    <!-- 안내/오류 메시지가 여기에 나타남 -->
+    <button class="submit" id="submitBtn">로그인</button>
+
     <p class="message" id="message"></p>
 
     <div class="footer">© 순수본(주) 식품본부 · 내부 전용 도구</div>
   </div>
 
-  <!-- =====================================================================
-       Supabase 라이브러리 불러오기
-       (우리가 만든 DB/인증 창고와 대화하기 위한 도구 모음)
-       ===================================================================== -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
   <script>
-    // ===================================================================
-    // [1] 우리 Supabase 창고에 연결하기
-    //     아래 두 값을 본인 프로젝트 값으로 바꿔야 합니다.
-    //     - URL : Settings → Data API 의 'Project URL'
-    //     - KEY : Settings → API Keys 의 'Publishable key' (sb_publishable_... 로 시작)
-    //     ※ Secret key (sb_secret_...) 는 절대 여기 넣으면 안 됩니다!
-    // ===================================================================
+    // [1] Supabase 연결 (이름은 supabaseClient — 라이브러리 'supabase'와 충돌 방지)
     const SUPABASE_URL = "https://ngvgzfhvjaowwhnmmpex.supabase.co";
     const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_Mxqz7HBIPJNp0UQUgjsmiA_lHSfCh-A";
-
-    // 위 두 값으로 '연결 도구'를 하나 만든다.
-    // ★ 이름을 supabaseClient 로 둔다. (라이브러리가 이미 'supabase'라는
-    //    이름을 쓰고 있어서, 같은 이름을 쓰면 충돌해 코드가 멈춘다.)
-    // 앞으로 로그인/DB 작업은 모두 이 supabaseClient 를 통해 부탁한다.
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 
-    // ===================================================================
-    // [2] 화면 요소들을 자바스크립트에서 다룰 수 있게 손에 쥔다.
-    //     (HTML에서 id로 붙여둔 이름표를 찾아오는 것)
-    // ===================================================================
-    const emailInput = document.getElementById("email");   // 이메일 입력칸
-    const loginBtn   = document.getElementById("loginBtn"); // 버튼
-    const messageEl  = document.getElementById("message");  // 메시지 자리
+    // [2] 화면 요소
+    const emailInput = document.getElementById("email");
+    const pwInput    = document.getElementById("password");
+    const submitBtn  = document.getElementById("submitBtn");
+    const messageEl  = document.getElementById("message");
+    const descEl     = document.getElementById("desc");
+    const tabLogin   = document.getElementById("tab-login");
+    const tabSignup  = document.getElementById("tab-signup");
 
-    // 가입을 허용할 회사 이메일 도메인 (이 뒤로 끝나는 메일만 허용)
     const ALLOWED_DOMAIN = "@bongroup.co.kr";
+    const AFTER_LOGIN = "./simulator.html";   // 로그인 후 이동할 화면
+    let mode = "login";                        // 'login' 또는 'signup'
 
-    // 로그인에 성공해 메일 링크를 클릭하면 돌아올 우리 사이트 주소
-    const REDIRECT_URL = "https://ssbon-food.github.io/ssbon-price-guide/";
+    // [3] 메시지 표시 도우미
+    function showMessage(text, type) { messageEl.textContent = text; messageEl.className = "message " + type; }
 
-    // ===================================================================
-    // [3] 화면에 메시지를 보여주는 작은 도우미 함수
-    //     type 이 "ok"면 녹색, "error"면 빨간색으로 표시된다.
-    // ===================================================================
-    function showMessage(text, type) {
-      messageEl.textContent = text;            // 글자 내용 넣기
-      messageEl.className = "message " + type; // 색상 클래스 붙이기
+    // [4] 탭 전환 (로그인 ↔ 가입)
+    function setMode(m) {
+      mode = m;
+      const login = (m === "login");
+      tabLogin.classList.toggle("active", login);
+      tabSignup.classList.toggle("active", !login);
+      submitBtn.textContent = login ? "로그인" : "가입하기";
+      pwInput.setAttribute("autocomplete", login ? "current-password" : "new-password");
+      descEl.textContent = login
+        ? "회사 이메일과 비밀번호로 로그인하세요."
+        : "회사 이메일로 가입하세요. 가입 후 관리자 승인을 받으면 사용할 수 있습니다.";
+      showMessage("", "");
     }
+    tabLogin.addEventListener("click", () => setMode("login"));
+    tabSignup.addEventListener("click", () => setMode("signup"));
 
-    // ===================================================================
-    // [4] 버튼을 눌렀을 때 실제로 하는 일
-    // ===================================================================
-    async function sendLoginLink() {
-      // (1) 입력한 이메일을 가져오고, 앞뒤 공백 제거 + 소문자로 정리
+    // [5] 제출(로그인 또는 가입) 처리
+    async function handleSubmit() {
       const email = emailInput.value.trim().toLowerCase();
+      const password = pwInput.value;
 
-      // (2) 이메일이 비어 있으면 중단
-      if (!email) {
-        showMessage("이메일을 입력해 주세요.", "error");
-        return;
+      if (!email || !password) { showMessage("이메일과 비밀번호를 입력해 주세요.", "error"); return; }
+
+      // 가입 시에만 도메인·비밀번호 길이 검사
+      if (mode === "signup") {
+        if (!email.endsWith(ALLOWED_DOMAIN)) {
+          showMessage("회사 이메일(" + ALLOWED_DOMAIN + ")만 가입할 수 있습니다.", "error"); return;
+        }
+        if (password.length < 6) { showMessage("비밀번호는 6자 이상이어야 합니다.", "error"); return; }
       }
 
-      // (3) 회사 도메인으로 끝나지 않으면 차단 (1차 점검)
-      if (!email.endsWith(ALLOWED_DOMAIN)) {
-        showMessage("회사 이메일(" + ALLOWED_DOMAIN + ")만 사용할 수 있습니다.", "error");
-        return;
-      }
+      submitBtn.disabled = true;
+      showMessage(mode === "login" ? "로그인 중..." : "가입 중...", "ok");
 
-      // (4) 처리하는 동안 버튼을 잠그고 안내 표시
-      loginBtn.disabled = true;
-      showMessage("로그인 링크를 보내는 중...", "ok");
-
-      // (5) Supabase에게 "이 이메일로 매직링크 보내줘" 라고 부탁
-      const { error } = await supabaseClient.auth.signInWithOtp({
-        email: email,
-        options: { emailRedirectTo: REDIRECT_URL },
-      });
-
-      // (6) 결과 처리: 오류가 있으면 알려주고, 없으면 성공 안내
-      if (error) {
-        showMessage("전송에 실패했습니다: " + error.message, "error");
-        loginBtn.disabled = false; // 다시 시도할 수 있게 버튼 풀기
+      let error;
+      if (mode === "login") {
+        ({ error } = await supabaseClient.auth.signInWithPassword({ email, password }));
       } else {
-        showMessage(
-          email + " 로 로그인 링크를 보냈습니다. 메일함을 확인해 주세요.",
-          "ok"
-        );
+        ({ error } = await supabaseClient.auth.signUp({ email, password }));
+      }
+
+      if (error) {
+        showMessage((mode === "login" ? "로그인 실패: " : "가입 실패: ") + error.message, "error");
+        submitBtn.disabled = false;
+      } else {
+        showMessage("성공! 시뮬레이터로 이동합니다...", "ok");
+        window.location.href = AFTER_LOGIN;
       }
     }
 
-    // ===================================================================
-    // [5] 버튼 클릭과 Enter 키에 위 함수를 연결한다.
-    // ===================================================================
-    loginBtn.addEventListener("click", sendLoginLink);
-    emailInput.addEventListener("keydown", function (e) {
-      if (e.key === "Enter") sendLoginLink(); // 입력칸에서 Enter도 동작
+    submitBtn.addEventListener("click", handleSubmit);
+    pwInput.addEventListener("keydown", e => { if (e.key === "Enter") handleSubmit(); });
+
+    // [6] 이미 로그인되어 있으면 바로 시뮬레이터로
+    supabaseClient.auth.getSession().then(({ data }) => {
+      if (data.session) window.location.href = AFTER_LOGIN;
     });
   </script>
 </body>
