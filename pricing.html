@@ -229,18 +229,12 @@
   })();
 
   async function loadAll(){
-    const [r1,r2,r3,r4,r5] = await Promise.all([
-      sb.from('products').select('*').eq('is_active',true).order('code'),
-      sb.from('channels').select('*').eq('is_active',true).order('name'),
-      sb.from('product_units').select('*').eq('is_active',true).order('box_qty'),
-      sb.from('logistics').select('*').eq('is_active',true),
-      sb.from('channel_logistics').select('*'),
-    ]);
-    allProducts = r1.data||[];
-    allChannels = r2.data||[];
-    allUnits    = r3.data||[];
-    allFreight  = r4.data||[];
-    allLogistics= r5.data||[];
+    // 각 쿼리를 독립적으로 실행 (하나 실패해도 나머지 진행)
+    try { const r=await sb.from('products').select('*').eq('is_active',true).order('code'); allProducts=r.data||[]; } catch(e){ allProducts=[]; }
+    try { const r=await sb.from('channels').select('*').eq('is_active',true).order('name'); allChannels=r.data||[]; } catch(e){ allChannels=[]; }
+    try { const r=await sb.from('product_units').select('*').eq('is_active',true).order('box_qty'); allUnits=r.data||[]; } catch(e){ allUnits=[]; }
+    try { const r=await sb.from('logistics').select('*').eq('is_active',true); allFreight=r.data||[]; } catch(e){ allFreight=[]; }
+    try { const r=await sb.from('channel_logistics').select('*'); allLogistics=r.data||[]; } catch(e){ allLogistics=[]; }
 
     // 위탁 운반비 맵
     allFreight.forEach(f=>{ freightMap[f.temperature] = f.consign_freight||0; });
