@@ -408,9 +408,6 @@
       me = p; canEdit = (p.role==='master'||p.role==='admin');
       $('authGate').style.display='none'; $('app').style.display='block';
       initNav(p);
-      
-      $('who-info').textContent = (p.name||p.email||'')+(p.role?' · '+p.role:'');
-      if(p.role==='admin') 
       if(canEdit) $('btn-apply').style.display='inline-block';
       await loadAllMasters();
     } else {
