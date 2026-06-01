@@ -206,7 +206,11 @@
       <div class="g2" style="margin-top:8px;">
         <div class="fl">
           <label>품온</label>
-          <input type="text" id="disp-temp" class="readonly" disabled />
+          <select id="disp-temp">
+            <option value="실온">실온</option>
+            <option value="냉장">냉장</option>
+            <option value="냉동">냉동</option>
+          </select>
         </div>
         <div class="fl">
           <label>EA원가 (원)</label>
@@ -394,6 +398,8 @@
       $('authGate').style.display='none';
       $('app').style.display='block';
       $('logoutBtn').style.display='inline-block';
+      // 상품 선택 전에도 입수량 추가 가능
+      $('btn-add-row').style.display='block';
       $('who-info').textContent = (p.name||p.email||'')+(p.role?' · '+p.role:'');
       if(p.role==='admin') $('adminBtn').style.display='inline-block';
       if(canEdit) $('btn-apply').style.display='inline-block';
@@ -466,8 +472,9 @@
       $('inp-unit-cost').value = 0;
       $('inp-normal-price').value = 0;
       // 품온 변경 시 disp-temp 동기화
-      $('new-temp').onchange = ()=>{ $('disp-temp').value = $('new-temp').value; };
       $('disp-temp').value = $('new-temp').value;
+      $('new-temp').onchange = ()=>{ $('disp-temp').value = $('new-temp').value; };
+      $('disp-temp').onchange = ()=>{ $('new-temp').value = $('disp-temp').value; };
       $('btn-add-row').style.display='block';
       renderUnitRows([]);
       renderResultTable();
@@ -480,7 +487,7 @@
     if (!opt.dataset.info){ currentProduct=null; resetUnitTable(); return; }
     currentProduct = JSON.parse(opt.dataset.info);
 
-    $('disp-temp').value        = currentProduct.temperature||'';
+    $('disp-temp').value        = currentProduct.temperature||'실온';
     $('inp-unit-cost').value    = currentProduct.unit_cost||0;
     $('inp-normal-price').value = currentProduct.normal_price||0;
 
@@ -535,8 +542,8 @@
 
   // ── 입수량 테이블 렌더링 ──
   function resetUnitTable(){
-    $('unit-rows').innerHTML='<tr><td colspan="6" class="placeholder">상품을 선택하면 입수량을 추가할 수 있습니다</td></tr>';
-    $('btn-add-row').style.display='none';
+    $('unit-rows').innerHTML='<tr><td colspan="6" class="placeholder">입수량 추가 버튼을 눌러 시뮬레이션을 시작하세요</td></tr>';
+    $('btn-add-row').style.display='block';
     $('result-body').innerHTML='<tr><td colspan="7" class="placeholder">상품과 판매처를 선택하면 손익 비교표가 나타납니다</td></tr>';
     $('detail-panel').classList.remove('show');
     $('action-bar').style.display='none';
@@ -620,7 +627,7 @@
     const eaCost  = parseFloat($('inp-unit-cost').value)||0;
     const vatEx   = price/1.1;
     const isDirect= currentChannel.channel_type==='direct';
-    const temp    = currentProduct?.temperature||'실온';
+    const temp    = (currentProduct?.temperature) || $('disp-temp').value || '실온';
     const fm      = freightMaster[temp]||{consign:0,dRate:0,dDist:0};
 
     const distRate   = isDirect ? fm.dDist : 0;
