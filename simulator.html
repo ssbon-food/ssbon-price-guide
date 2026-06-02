@@ -46,6 +46,7 @@
     .fl .readonly{background:#f0f3f0;color:var(--muted);font-size:12px;}
     .g2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
     .combo{display:flex;gap:6px;align-items:center;}
+    .rate-fixed-label{font-size:12px;color:var(--muted);padding:7px 8px;background:#f0f3f0;border-radius:8px;white-space:nowrap;flex-shrink:0;}
     .combo input[type="number"]{flex:1;min-width:0;}
     .combo select{width:78px;flex-shrink:0;}
     .combo input{flex:1;}
@@ -275,20 +276,15 @@
         <label>판매처 선택</label>
         <select id="sel-channel" disabled><option value="">-- 유형을 먼저 선택하세요 --</option></select>
       </div>
-      <div class="g2" style="margin-top:6px;">
-        <div class="fl">
-          <label>수수료 기준</label>
-          <input type="text" id="disp-feebase" class="readonly" disabled />
+      <div class="fl" style="margin-top:6px;">
+        <label>운반비 <span id="freight-src" style="font-size:11px;font-weight:400;color:var(--muted);"></span></label>
+        <div class="combo">
+          <select id="freightType" style="width:90px;flex-shrink:0;"><option value="rate">정률 %</option><option value="fixed">정액 원</option></select>
+          <input type="number" id="freightValue" step="any" value="0" style="flex:1;min-width:80px;" />
+          <button type="button" id="freight-reset" title="운반비마스터 값으로 되돌리기" style="font-size:12px;padding:7px 10px;border:1px solid var(--line);border-radius:7px;background:#fafbfa;cursor:pointer;white-space:nowrap;flex-shrink:0;">↺ 자동</button>
         </div>
-        <div class="fl">
-          <label>운반비 <span id="freight-src" style="font-size:11px;font-weight:400;color:var(--muted);"></span></label>
-          <div class="combo">
-            <select id="freightType"><option value="rate">정률 %</option><option value="fixed">정액 원</option></select>
-            <input type="number" id="freightValue" step="any" value="0" />
-            <button type="button" id="freight-reset" title="운반비마스터 값으로 되돌리기" style="font-size:11px;padding:6px 8px;border:1px solid var(--line);border-radius:7px;background:#fafbfa;cursor:pointer;white-space:nowrap;">↺ 자동</button>
-          </div>
-          <input type="hidden" id="disp-freight2" />
-        </div>
+        <input type="hidden" id="disp-feebase" />
+        <input type="hidden" id="disp-freight2" />
       </div>
       <div class="dist-box" id="dist-box"></div>
     </div>
@@ -302,14 +298,14 @@
       <div class="fl">
         <label>광고선전비</label>
         <div class="combo">
-          <select id="adType"><option value="rate">정률 %</option><option value="fixed">정액 원</option></select>
+          <span class="rate-fixed-label">정률 %</span><input type="hidden" id="adType" value="rate" />
           <input type="number" id="adValue" value="0" />
         </div>
       </div>
       <div class="fl">
         <label>판매촉진비</label>
         <div class="combo">
-          <select id="promoType"><option value="rate">정률 %</option><option value="fixed">정액 원</option></select>
+          <span class="rate-fixed-label">정률 %</span><input type="hidden" id="promoType" value="rate" />
           <input type="number" id="promoValue" value="0" />
         </div>
       </div>
@@ -321,14 +317,14 @@
       <div class="fl">
         <label>본부공통비</label>
         <div class="combo">
-          <select id="hqType"><option value="rate">정률 %</option><option value="fixed">정액 원</option></select>
+          <span class="rate-fixed-label">정률 %</span><input type="hidden" id="hqType" value="rate" />
           <input type="number" id="hqValue" value="0" />
         </div>
       </div>
       <div class="fl">
         <label>부문공통비</label>
         <div class="combo">
-          <select id="divType"><option value="rate">정률 %</option><option value="fixed">정액 원</option></select>
+          <span class="rate-fixed-label">정률 %</span><input type="hidden" id="divType" value="rate" />
           <input type="number" id="divValue" value="0" />
         </div>
       </div>
@@ -537,6 +533,29 @@
     // 이전 선택이 필터 결과에 남아있으면 유지
     if(cur && filtered.some(p=>String(p.id)===String(cur))) sel.value = cur;
     const cnt = $('pf-count'); if(cnt) cnt.textContent = `(${filtered.length}개)`;
+    syncAttrFilters();
+  }
+
+  // 필터 연동: 한 필터를 고르면 나머지 필터는 '양립하는 상품에 존재하는 값'만 표시
+  function syncAttrFilters(){
+    const fields = ['customer','make_type','manage_type','item_type'];
+    const cur = {};
+    fields.forEach(f=>{ cur[f] = $('pf-'+f).value; });
+    fields.forEach(f=>{
+      // 자기 자신을 제외한 나머지 필터를 만족하는 상품들
+      const pool = allProducts.filter(p=>{
+        return fields.every(g=> g===f || !cur[g] || p[g]===cur[g]);
+      });
+      const vals = [];
+      pool.forEach(p=>{ const v=p[f]; if(v && !vals.includes(v)) vals.push(v); });
+      vals.sort((a,b)=>a.localeCompare(b,'ko'));
+      const sel = $('pf-'+f);
+      const keep = cur[f];
+      // 현재 선택값이 목록에 없으면(다른 필터로 무효화됨) 비움
+      const opts = ['<option value="">전체</option>'].concat(vals.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`));
+      sel.innerHTML = opts.join('');
+      sel.value = vals.includes(keep) ? keep : '';
+    });
   }
 
   // 상품 필터 변경 시 드롭다운 갱신
@@ -1320,6 +1339,7 @@
 </script>
 </body>
 </html>
+
 
 
 
