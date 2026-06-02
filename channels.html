@@ -152,12 +152,15 @@
     <div class="toolbar">
       <input class="search" id="search" placeholder="채널명으로 검색…" />
       <label class="chk"><input type="checkbox" id="show-inactive" /> 비활성 포함</label>
+      <button class="btn-ghost" id="btn-bulk-activate" style="display:none;color:var(--accent);">✓ 선택 활성</button>
+      <button class="btn-ghost" id="btn-bulk-deactivate" style="display:none;">⊘ 선택 비활성</button>
       <button class="btn-primary" id="btn-new" style="display:none;">+ 새 채널</button>
     </div>
     <div class="card">
       <table>
         <thead>
           <tr>
+            <th style="width:34px;text-align:center;"><input type="checkbox" id="chk-all" title="전체 선택" /></th>
             <th class="sortable" data-sort="name">채널명<span class="sort-ind"></span></th>
             <th class="sortable" data-sort="channel_type">유형<span class="sort-ind"></span></th>
             <th class="ctr sortable" data-sort="is_representative">대표<br><span style="font-size:11px;font-weight:400;">채널</span><span class="sort-ind"></span></th>
@@ -390,7 +393,9 @@
         }
       }
 
+      const checked = selectedIds.has(c.id) ? "checked" : "";
       tr.innerHTML=`
+        <td style="text-align:center;"><input type="checkbox" class="row-chk" data-id="${c.id}" ${checked} /></td>
         <td class="cname">${esc(c.name)}</td>
         <td>${typeTag(c.channel_type)}</td>
         <td class="ctr">${c.is_representative
@@ -422,7 +427,56 @@
       }
       tbody.appendChild(tr);
     });
+
+    // 체크박스 이벤트
+    tbody.querySelectorAll(".row-chk").forEach(cb=>{
+      cb.addEventListener("change", ()=>{
+        const id=Number(cb.dataset.id);
+        if(cb.checked) selectedIds.add(id); else selectedIds.delete(id);
+        updateBulkBar();
+      });
+    });
+    updateBulkBar();
   }
+
+  // ── 체크박스 일괄 활성/비활성 ──
+  let selectedIds = new Set();
+  function updateBulkBar(){
+    const n=selectedIds.size;
+    const show = canEdit && n>0;
+    $("btn-bulk-activate").style.display = show ? "inline-block" : "none";
+    $("btn-bulk-deactivate").style.display = show ? "inline-block" : "none";
+    if(show){
+      $("btn-bulk-activate").textContent = `✓ 선택 활성 (${n})`;
+      $("btn-bulk-deactivate").textContent = `⊘ 선택 비활성 (${n})`;
+    }
+    const all=$("chk-all");
+    const visible=[...document.querySelectorAll(".row-chk")];
+    if(all) all.checked = visible.length>0 && visible.every(cb=>cb.checked);
+  }
+  $("chk-all") && $("chk-all").addEventListener("change", e=>{
+    const on=e.target.checked;
+    document.querySelectorAll(".row-chk").forEach(cb=>{
+      cb.checked=on;
+      const id=Number(cb.dataset.id);
+      if(on) selectedIds.add(id); else selectedIds.delete(id);
+    });
+    updateBulkBar();
+  });
+  $("btn-bulk-activate") && $("btn-bulk-activate").addEventListener("click", async()=>{
+    const ids=[...selectedIds]; if(ids.length===0) return;
+    if(!confirm(`선택한 ${ids.length}개 채널을 활성화할까요?`)) return;
+    const { error } = await sb.from("channels").update({is_active:true,updated_by:me.id,updated_at:new Date().toISOString()}).in("id",ids);
+    if(error){ alert("처리 실패: "+error.message); return; }
+    selectedIds.clear(); await loadChannels();
+  });
+  $("btn-bulk-deactivate") && $("btn-bulk-deactivate").addEventListener("click", async()=>{
+    const ids=[...selectedIds]; if(ids.length===0) return;
+    if(!confirm(`선택한 ${ids.length}개 채널을 비활성 처리할까요?`)) return;
+    const { error } = await sb.from("channels").update({is_active:false,updated_by:me.id,updated_at:new Date().toISOString()}).in("id",ids);
+    if(error){ alert("처리 실패: "+error.message); return; }
+    selectedIds.clear(); await loadChannels();
+  });
 
   document.addEventListener("click", e=>{
     const th=e.target.closest("th.sortable");
@@ -534,6 +588,7 @@
 </script>
 </body>
 </html>
+
 
 
 
