@@ -142,6 +142,7 @@
     <div class="toolbar">
       <input class="search" id="search" placeholder="ERP코드 또는 상품명으로 검색…" />
       <label class="chk"><input type="checkbox" id="show-inactive" /> 비활성 포함</label>
+      <button class="btn-ghost" id="btn-bulk-activate" style="display:none;color:var(--accent);">✓ 선택 활성</button>
       <button class="btn-ghost" id="btn-bulk-deactivate" style="display:none;">⊘ 선택 비활성</button>
       <button class="btn-ghost" id="btn-bulk-delete" style="display:none;color:var(--warn);border-color:#f0d0c8;">🗑 선택 삭제</button>
       <button class="btn-ghost" id="btn-bulk" style="display:none;">📋 일괄등록</button>
@@ -445,9 +446,11 @@
     const show = canEdit && n>0;
     $("btn-bulk-delete").style.display = show ? "inline-block" : "none";
     $("btn-bulk-deactivate").style.display = show ? "inline-block" : "none";
+    $("btn-bulk-activate").style.display = show ? "inline-block" : "none";
     if(show){
       $("btn-bulk-delete").textContent = `🗑 선택 삭제 (${n})`;
       $("btn-bulk-deactivate").textContent = `⊘ 선택 비활성 (${n})`;
+      $("btn-bulk-activate").textContent = `✓ 선택 활성 (${n})`;
     }
     // 전체선택 체크박스 상태
     const all=$("chk-all");
@@ -468,6 +471,15 @@
     if(ids.length===0) return;
     if(!confirm(`선택한 ${ids.length}개 상품을 비활성 처리할까요?`)) return;
     const { error } = await sb.from("products").update({is_active:false,updated_by:me.id,updated_at:new Date().toISOString()}).in("id",ids);
+    if(error){ alert("처리 실패: "+error.message); return; }
+    selectedIds.clear();
+    await loadProducts();
+  });
+  $("btn-bulk-activate") && $("btn-bulk-activate").addEventListener("click", async()=>{
+    const ids=[...selectedIds];
+    if(ids.length===0) return;
+    if(!confirm(`선택한 ${ids.length}개 상품을 활성화할까요?`)) return;
+    const { error } = await sb.from("products").update({is_active:true,updated_by:me.id,updated_at:new Date().toISOString()}).in("id",ids);
     if(error){ alert("처리 실패: "+error.message); return; }
     selectedIds.clear();
     await loadProducts();
@@ -750,5 +762,6 @@
 </script>
 </body>
 </html>
+
 
 
