@@ -415,6 +415,34 @@
     </div>
   </div>
 </div>
+<!-- 가격정책 반영: 채널 선택 모달 -->
+<div class="sc-modal-bg" id="apply-modal-bg">
+  <div class="sc-modal">
+    <div class="sc-modal-head">
+      <h3>📊 가격정책에 반영할 채널 선택</h3>
+      <button class="sc-modal-close" id="apply-modal-close">&times;</button>
+    </div>
+    <div style="padding:18px 22px;">
+      <div style="font-size:13px;color:var(--muted);line-height:1.7;margin-bottom:14px;">
+        화면의 입수량·가격을 아래에서 <b>선택한 채널들</b>에 동일하게 반영합니다.<br>
+        가격은 채널 공통이며, 채널별로 어떤 입수량을 운영할지(연결 여부)가 갱신됩니다.<br>
+        각 채널의 <b>영업이익률(정상가 기준)</b>을 참고해 운영할 채널을 고르세요.
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:10px;">
+        <button class="btn-load" id="apply-check-all" style="padding:5px 12px;font-size:12px;">전체 선택</button>
+        <button class="btn-load" id="apply-uncheck-all" style="padding:5px 12px;font-size:12px;">전체 해제</button>
+      </div>
+      <div id="apply-channel-list" style="max-height:340px;overflow-y:auto;border:1px solid var(--line);border-radius:10px;"></div>
+    </div>
+    <div style="padding:14px 22px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;">
+      <span id="apply-count" style="font-size:13px;color:var(--muted);"></span>
+      <div style="display:flex;gap:10px;">
+        <button class="btn-load" id="apply-cancel">취소</button>
+        <button class="btn-primary" id="apply-confirm" style="padding:9px 18px;">선택 채널에 반영</button>
+      </div>
+    </div>
+  </div>
+</div>
 <script>
   const SB_URL = "https://ngvgzfhvjaowwhnmmpex.supabase.co";
   const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ndmd6Zmh2amFvd3dobm1tcGV4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMzgyNjQsImV4cCI6MjA5NTYxNDI2NH0.jO5Ab8trHPyamHhYFXi9UWvQ217pDJW9qplBWph8cgg";
@@ -932,6 +960,39 @@
   }
 
   // price=해당 가격대(정상/상시/최대), normalP=정상판매가(직납 기준점). 위탁은 normalP 무시.
+  // 특정 채널 객체 기준으로 손익 계산 (화면 입력값에 의존하지 않음 · 모달의 채널별 이익률용)
+  // chLogi: 그 채널의 품온별 {dRate, dDist, consign} (직납이면 channel_logistics에서 조회)
+  function calcProfitForChannel(ch, price, boxQty, normalP, chLogi){
+    if(!price||!ch) return null;
+    const eaCost = parseFloat($('inp-unit-cost').value)||0;
+    const vatEx  = price/1.1;
+    const temp   = (currentProduct?.temperature) || $('disp-temp').value || '실온';
+    const cost   = eaCost*boxQty;
+    const fm     = freightMaster[temp]||{consign:0,dRate:0,dDist:0};
+    const isDirect = ch.channel_type==='direct';
+    const adVal=ch.ad_value||0, promoVal=ch.promotion_value||0, hqVal=ch.hq_value||0, divVal=ch.div_value||0, feeRate=ch.commission_rate||0;
+    if(isDirect){
+      const li = (chLogi&&chLogi[temp]) ? chLogi[temp] : {dRate:0,dDist:0};
+      const distRate = li.dDist||0;
+      const dType = ch.discount_type||'case1';
+      const normVatEx=(normalP||price)/1.1, discVatEx=vatEx;
+      const baseVatEx=(dType==='case2')?discVatEx:normVatEx;
+      const supply = baseVatEx - baseVatEx*(distRate/100);
+      const feeAmt=supply*(feeRate/100), adAmt=supply*(adVal/100), promoAmt=supply*(promoVal/100);
+      const freight=supply*((li.dRate||0)/100);
+      const hqAmt=supply*(hqVal/100), divAmt=supply*(divVal/100);
+      const discShare=(dType==='case1')?(normVatEx-discVatEx):0;
+      const opProfit=supply-cost-discShare-feeAmt-adAmt-promoAmt-freight-hqAmt-divAmt;
+      return { supply, opProfit, opRate: supply>0?opProfit/supply*100:0 };
+    } else {
+      const supply=vatEx;
+      const fee=supply*(feeRate/100), ad=supply*(adVal/100), promo=supply*(promoVal/100);
+      const freight=fm.consign||0, hq=supply*(hqVal/100), div=supply*(divVal/100);
+      const opProfit=supply-cost-fee-ad-promo-freight-hq-div;
+      return { supply, opProfit, opRate: supply>0?opProfit/supply*100:0 };
+    }
+  }
+
   function calcProfit(price, boxQty, normalP){
     if (!price||!currentChannel) return null;
     const eaCost  = parseFloat($('inp-unit-cost').value)||0;
@@ -1100,6 +1161,9 @@
     $('detail-panel').classList.add('show');
   }
 
+  // ── 가격정책 반영: 신규상품 처리 후 채널 선택 모달 열기 ──
+  let pendingApplyRows = null;  // 반영 대기 중인 입수량 행
+
   $('btn-apply').addEventListener('click', async()=>{
     const rows = getUnitRows();
     if (rows.length===0){ alert('입수량을 추가해 주세요.'); return; }
@@ -1107,7 +1171,7 @@
     if (isNew) {
       const newName = $('new-name').value.trim();
       if (!newName){ alert('상품명을 입력해 주세요.'); return; }
-      if (!confirm(`신규상품 "${newName}"을 상품마스터에 등록하고 가격정책에 반영할까요?`)) return;
+      if (!confirm(`신규상품 "${newName}"을 상품마스터에 등록할까요?`)) return;
       const { data:newProd, error:pErr } = await sb.from('products').insert({
         code: $('new-code').value.trim()||'', name: newName,
         temperature: $('disp-temp').value, unit_weight: parseFloat($('new-weight').value)||0,
@@ -1125,31 +1189,84 @@
       $('product-info').textContent=`${newProd.code||''} · 단량 ${comma(newProd.unit_weight)}g`;
     } else {
       if (!currentProduct){ alert('상품을 선택해 주세요.'); return; }
-      if (!confirm(`'${currentChannel?currentChannel.name:''}' 채널의 가격정책에 반영할까요?\n이 채널의 입수량 구성만 갱신되고, 다른 채널은 유지됩니다.`)) return;
       await sb.from('products').update({
         unit_cost: parseFloat($('inp-unit-cost').value)||0, normal_price: parseFloat($('inp-normal-price').value)||0,
         updated_by: me.id, updated_at: new Date().toISOString(),
       }).eq('id',currentProduct.id);
     }
-    if (!currentChannel){ alert('판매처(채널)를 먼저 선택해 주세요.'); return; }
-
-    // 화면의 입수량 행들 (box_qty + 가격)
-    const formRows = rows.map(tr=>({
+    // 화면의 입수량 행 보관
+    pendingApplyRows = rows.map(tr=>({
       box_qty:      parseInt(numC(tr.querySelector('.qty').value))||1,
       normal_price: numC(tr.querySelector('.np').value)||0,
       always_price: numC(tr.querySelector('.ap').value)||0,
       max_price:    numC(tr.querySelector('.mp').value)||0,
     }));
+    await openApplyModal();
+  });
 
-    // 1) 이 상품의 기존 입수량(공통 가격) 전체 조회
+  // 채널 선택 모달 열기 + 채널별 이익률 계산
+  async function openApplyModal(){
+    const listEl = $('apply-channel-list');
+    listEl.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted);">채널별 손익 계산 중...</div>';
+    $('apply-modal-bg').classList.add('show');
+
+    // 활성 채널 전체
+    const actives = allChannels.filter(c=>c.is_active!==false);
+    // 직납 채널들의 품온별 물류 정보 일괄 조회
+    const directIds = actives.filter(c=>c.channel_type==='direct').map(c=>c.id);
+    const logiByCh = {};
+    if(directIds.length>0){
+      const { data:logi } = await sb.from('channel_logistics').select('*').in('channel_id', directIds);
+      (logi||[]).forEach(r=>{
+        if(!logiByCh[r.channel_id]) logiByCh[r.channel_id]={};
+        logiByCh[r.channel_id][r.temperature] = { dRate:r.freight_rate||0, dDist:r.dist_rate||0 };
+      });
+    }
+    // 대표 입수량(첫 행, 정상가) 기준으로 채널별 이익률 표시
+    const ref = pendingApplyRows[0];
+    let html = '';
+    actives.forEach(ch=>{
+      const r = calcProfitForChannel(ch, ref.normal_price, ref.box_qty, ref.normal_price, logiByCh[ch.id]);
+      const rate = r ? r.opRate : null;
+      const rateColor = rate==null ? 'var(--muted)' : (rate>=15 ? '#2f7d4f' : rate>=5 ? '#b88a00' : '#c0633a');
+      const rateTxt = rate==null ? '-' : rate.toFixed(1)+'%';
+      const isCur = currentChannel && ch.id===currentChannel.id;
+      html += `<label style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line);cursor:pointer;">
+        <input type="checkbox" class="apply-chk" value="${ch.id}" ${isCur?'checked':''} />
+        <span style="flex:1;font-weight:600;">${esc(ch.name)} <span style="font-size:11px;font-weight:400;color:var(--muted);">${ch.channel_type==='direct'?'직납':'위탁'}</span></span>
+        <span style="font-size:12px;color:var(--muted);">${ref.box_qty}개입 정상가 이익률</span>
+        <span style="font-weight:700;color:${rateColor};min-width:54px;text-align:right;">${rateTxt}</span>
+      </label>`;
+    });
+    listEl.innerHTML = html || '<div style="padding:20px;text-align:center;color:var(--muted);">활성 채널이 없습니다.</div>';
+    updateApplyCount();
+    listEl.querySelectorAll('.apply-chk').forEach(cb=>cb.addEventListener('change',updateApplyCount));
+  }
+  function updateApplyCount(){
+    const n = document.querySelectorAll('.apply-chk:checked').length;
+    $('apply-count').textContent = `${n}개 채널 선택됨`;
+    $('apply-confirm').disabled = (n===0);
+  }
+  $('apply-check-all') && $('apply-check-all').addEventListener('click',()=>{ document.querySelectorAll('.apply-chk').forEach(cb=>cb.checked=true); updateApplyCount(); });
+  $('apply-uncheck-all') && $('apply-uncheck-all').addEventListener('click',()=>{ document.querySelectorAll('.apply-chk').forEach(cb=>cb.checked=false); updateApplyCount(); });
+  $('apply-cancel') && $('apply-cancel').addEventListener('click',()=>$('apply-modal-bg').classList.remove('show'));
+  $('apply-modal-close') && $('apply-modal-close').addEventListener('click',()=>$('apply-modal-bg').classList.remove('show'));
+
+  // 선택 채널에 일괄 반영
+  $('apply-confirm') && $('apply-confirm').addEventListener('click', async()=>{
+    const chIds = [...document.querySelectorAll('.apply-chk:checked')].map(cb=>Number(cb.value));
+    if(chIds.length===0) return;
+    $('apply-confirm').disabled = true;
+
+    // 1) 이 상품의 기존 입수량 조회
     const { data:existing } = await sb.from('product_units')
       .select('*').eq('product_id',currentProduct.id).eq('is_active',true);
     const existMap = {};
     (existing||[]).forEach(u=>{ existMap[u.box_qty] = u; });
 
-    // 2) 화면에 있는 각 입수량을 공통 가격으로 upsert → unit_id 확보
-    const keepUnitIds = [];  // 이번에 이 채널에 연결할 unit_id 목록
-    for (const fr of formRows){
+    // 2) 화면 입수량을 공통 가격으로 upsert → unit_id 확보
+    const keepUnitIds = [];
+    for (const fr of pendingApplyRows){
       const payload = {
         product_id: currentProduct.id, box_qty: fr.box_qty,
         normal_price: fr.normal_price, always_price: fr.always_price, max_price: fr.max_price,
@@ -1157,34 +1274,30 @@
       };
       let unitId;
       if (existMap[fr.box_qty]){
-        // 기존 입수량이면 가격만 갱신 (공통 가격이므로 최신값으로 덮어씀)
         const { error:uErr } = await sb.from('product_units').update(payload).eq('id',existMap[fr.box_qty].id);
-        if (uErr){ alert('가격 저장 실패: '+uErr.message); return; }
+        if (uErr){ alert('가격 저장 실패: '+uErr.message); $('apply-confirm').disabled=false; return; }
         unitId = existMap[fr.box_qty].id;
       } else {
-        // 신규 입수량이면 새로 생성
         payload.created_by = me.id;
         const { data:ins, error:iErr } = await sb.from('product_units').insert(payload).select('id').single();
-        if (iErr){ alert('가격 저장 실패: '+iErr.message); return; }
-        unitId = ins.id;
-        existMap[fr.box_qty] = { id: unitId };
+        if (iErr){ alert('가격 저장 실패: '+iErr.message); $('apply-confirm').disabled=false; return; }
+        unitId = ins.id; existMap[fr.box_qty] = { id: unitId };
       }
       keepUnitIds.push(unitId);
     }
+    const allUnitIds = (existing||[]).map(u=>u.id).concat(keepUnitIds.filter(id=>!(existing||[]).some(u=>u.id===id)));
 
-    // 3) 이 채널의 기존 연결을 모두 끊고, 화면에 있는 입수량만 다시 연결
-    //    → 다른 채널의 연결은 건드리지 않으므로 카카오톡딜 4개입은 그대로 유지됨
-    await sb.from('unit_channels').delete().eq('channel_id',currentChannel.id)
-      .in('unit_id', (existing||[]).map(u=>u.id));  // 이 상품의 unit 중 이 채널 연결만 제거
-    if (keepUnitIds.length>0){
-      const linkRows = keepUnitIds.map(uid=>({ unit_id: uid, channel_id: currentChannel.id }));
+    // 3) 선택된 각 채널에 대해: 그 채널의 기존 연결(이 상품 unit) 제거 후 화면 입수량만 재연결
+    for(const cid of chIds){
+      await sb.from('unit_channels').delete().eq('channel_id',cid).in('unit_id', allUnitIds);
+      const linkRows = keepUnitIds.map(uid=>({ unit_id: uid, channel_id: cid }));
       const { error:lErr } = await sb.from('unit_channels').insert(linkRows);
-      if (lErr){ alert('채널 연결 저장 실패: '+lErr.message); return; }
+      if (lErr){ alert('채널 연결 저장 실패: '+lErr.message); $('apply-confirm').disabled=false; return; }
     }
 
-    flash(isNew
-      ? `✓ 상품 등록 + '${currentChannel.name}' 가격정책 반영 완료`
-      : `✓ '${currentChannel.name}' 가격정책에 반영됐어요`);
+    $('apply-modal-bg').classList.remove('show');
+    $('apply-confirm').disabled = false;
+    flash(`✓ ${chIds.length}개 채널의 가격정책에 반영됐어요`);
   });
 
   $('btn-scenario').addEventListener('click', async()=>{
@@ -1337,6 +1450,7 @@
 </script>
 </body>
 </html>
+
 
 
 
