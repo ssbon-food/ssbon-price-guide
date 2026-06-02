@@ -36,7 +36,7 @@
 
     .filter-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:12px 16px;box-shadow:var(--shadow);}
     .filter-bar label{font-size:12px;font-weight:600;color:var(--muted);white-space:nowrap;}
-    .filter-bar select{font-family:inherit;font-size:13px;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:#fafbfa;color:var(--ink);}
+    .filter-bar select{font-family:inherit;font-size:13px;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:#fafbfa;color:var(--ink);max-width:130px;}
     .filter-bar .filter-input{font-family:inherit;font-size:13px;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:#fafbfa;color:var(--ink);min-width:180px;}
     .filter-bar .filter-input:focus{outline:none;border-color:var(--accent);background:#fff;}
     .filter-bar select:focus{outline:none;border-color:var(--accent);}
@@ -178,6 +178,15 @@
       <label>상품</label>
       <input id="filter-product" class="filter-input" type="text" placeholder="ERP코드 또는 상품명으로 검색..." autocomplete="off" />
       <span class="filter-sep">|</span>
+      <label>고객</label>
+      <select id="filter-customer"><option value="">전체</option></select>
+      <label>제/상품</label>
+      <select id="filter-make_type"><option value="">전체</option></select>
+      <label>관리유형</label>
+      <select id="filter-manage_type"><option value="">전체</option></select>
+      <label>품목유형</label>
+      <select id="filter-item_type"><option value="">전체</option></select>
+      <span class="filter-sep">|</span>
       <label>채널유형</label>
       <select id="filter-chtype">
         <option value="">선택 ▾</option>
@@ -272,6 +281,20 @@
     allLogistics.forEach(l=>{ logisticsMap[`${l.channel_id}_${l.temperature}`] = l; });
     allLinks.forEach(l=>{ linkSet.add(`${l.unit_id}_${l.channel_id}`); });
 
+    // 새 컬럼 필터 옵션 로드 (product_options, 순서 반영)
+    let optRows = [];
+    try { const r=await sb.from('product_options').select('*').order('sort_order',{ascending:true}); optRows=r.data||[]; } catch(e){ optRows=[]; }
+    const optMap = { customer:[], make_type:[], manage_type:[], item_type:[] };
+    optRows.forEach(o=>{ if(optMap[o.field]) optMap[o.field].push(o.value); });
+    // 옵션에 없지만 상품에 실제로 쓰인 값도 보강 (누락 방지)
+    ['customer','make_type','manage_type','item_type'].forEach(f=>{
+      allProducts.forEach(p=>{ const v=p[f]; if(v && !optMap[f].includes(v)) optMap[f].push(v); });
+      const sel = $('filter-'+f);
+      if(sel){
+        sel.innerHTML = '<option value="">전체</option>' + optMap[f].map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');
+      }
+    });
+
     renderTable();
   }
 
@@ -281,6 +304,7 @@
   function renderTableDebounced(){ clearTimeout(_debounce); _debounce=setTimeout(renderTable, 250); }
   ['filter-product','filter-channel'].forEach(id=>{ $(id) && $(id).addEventListener('input', renderTableDebounced); });
   $('filter-chtype') && $('filter-chtype').addEventListener('change', renderTable);
+  ['filter-customer','filter-make_type','filter-manage_type','filter-item_type'].forEach(id=>{ $(id) && $(id).addEventListener('change', renderTable); });
 
   // ── 손익 계산 (시뮬레이터와 동일: 직납 case1/case2) ──
   // price=이 가격대, normalP=정상가(직납 기준점), 상세값 모두 반환
@@ -342,16 +366,21 @@
     const qProd = ($('filter-product').value||'').trim().toLowerCase();
     const qChan = ($('filter-channel').value||'').trim().toLowerCase();
     const selType= $('filter-chtype').value;
+    const fCustomer = $('filter-customer').value;
+    const fMakeType = $('filter-make_type').value;
+    const fManageType = $('filter-manage_type').value;
+    const fItemType = $('filter-item_type').value;
+    const anyAttrFilter = fCustomer||fMakeType||fManageType||fItemType;
 
     const fixedDiv  = $('table-fixed');
     const scrollDiv = $('table-scroll');
     const MAX_ROWS = 50;  // 한 번에 그릴 최대 상품 수
 
     // 필터를 하나도 안 걸었으면 전체를 그리지 않음 (대량 렌더 방지)
-    if(!qProd && !qChan && !selType){
+    if(!qProd && !qChan && !selType && !anyAttrFilter){
       fixedDiv.innerHTML = '<div class="empty-row" style="padding:50px 24px;line-height:1.8;">'
         + '<div style="font-size:15px;font-weight:600;color:var(--ink);margin-bottom:6px;">검색해서 시작하세요</div>'
-        + '<div style="font-size:13px;color:var(--muted);">상품명·ERP코드를 입력하거나, 채널유형/판매처를 선택하면<br>해당하는 가격정책만 빠르게 표시됩니다.</div>'
+        + '<div style="font-size:13px;color:var(--muted);">상품명·ERP코드 입력, 고객/제·상품/관리유형/품목유형 선택,<br>또는 채널유형/판매처를 선택하면 해당하는 가격정책만 빠르게 표시됩니다.</div>'
         + `<div style="font-size:12px;color:var(--muted);margin-top:12px;">전체 상품 ${allProducts.length}개 · 채널 ${allChannels.length}개</div>`
         + '</div>';
       scrollDiv.innerHTML = '';
@@ -360,8 +389,12 @@
 
     // 상품 필터 (코드/이름 검색)
     let products = allProducts.filter(p=>{
-      if(!qProd) return true;
-      return (`${p.code||''} ${p.name||''}`).toLowerCase().includes(qProd);
+      if(qProd && !(`${p.code||''} ${p.name||''}`).toLowerCase().includes(qProd)) return false;
+      if(fCustomer   && p.customer!==fCustomer) return false;
+      if(fMakeType   && p.make_type!==fMakeType) return false;
+      if(fManageType && p.manage_type!==fManageType) return false;
+      if(fItemType   && p.item_type!==fItemType) return false;
+      return true;
     });
     // 채널 필터 (유형 + 이름 검색)
     const channels = allChannels.filter(c=>{
@@ -582,5 +615,6 @@
 </script>
 </body>
 </html>
+
 
 
