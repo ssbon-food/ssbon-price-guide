@@ -31,7 +31,7 @@
     .btn-ghost{background:var(--panel);color:var(--ink);border:1px solid var(--line);} .btn-ghost:hover{background:#f0f3f0;}
     .btn-danger{background:#fff;color:var(--warn);border:1px solid #f5c4b3;} .btn-danger:hover{background:#fef2f2;}
     .btn-sm{padding:6px 12px;font-size:13px;}
-    .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;}
+    .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow-x:auto;}
     table{width:100%;border-collapse:collapse;}
     thead th{text-align:left;font-size:12.5px;color:var(--muted);font-weight:600;padding:12px 14px;border-bottom:1px solid var(--line);white-space:nowrap;background:#fafbfa;}
     th.num,td.num{text-align:right;}
@@ -87,6 +87,9 @@
   .ssbon-nav-btn:hover{background:#f0f3f0;}
   .ssbon-nav-btn.primary{color:#fff;background:#2f7d4f;border-color:#2f7d4f;}
   .ssbon-nav-btn.primary:hover{background:#266a42;}
+    th.sortable{cursor:pointer;user-select:none;white-space:nowrap;}
+    th.sortable:hover{background:#f0f3f0;}
+    .sort-ind{margin-left:4px;font-size:10px;color:var(--accent);}
   </style>
 </head>
 <body>
@@ -139,6 +142,8 @@
     <div class="toolbar">
       <input class="search" id="search" placeholder="ERP코드 또는 상품명으로 검색…" />
       <label class="chk"><input type="checkbox" id="show-inactive" /> 비활성 포함</label>
+      <button class="btn-ghost" id="btn-bulk-deactivate" style="display:none;">⊘ 선택 비활성</button>
+      <button class="btn-ghost" id="btn-bulk-delete" style="display:none;color:var(--warn);border-color:#f0d0c8;">🗑 선택 삭제</button>
       <button class="btn-ghost" id="btn-bulk" style="display:none;">📋 일괄등록</button>
       <button class="btn-primary" id="btn-new" style="display:none;">+ 새 상품</button>
     </div>
@@ -146,13 +151,19 @@
       <table>
         <thead>
           <tr>
-            <th>ERP코드</th>
-            <th>상품명</th>
-            <th>품온</th>
-            <th class="num">단량 (g)</th>
-            <th class="num">상품원가 (EA)</th>
-            <th class="num">정상가 (EA)</th>
-            <th>상태</th>
+            <th style="width:34px;text-align:center;"><input type="checkbox" id="chk-all" title="전체 선택" /></th>
+            <th class="sortable" data-sort="code">ERP코드<span class="sort-ind"></span></th>
+            <th class="sortable" data-sort="customer">고객<span class="sort-ind"></span></th>
+            <th class="sortable" data-sort="make_type">제/상품<span class="sort-ind"></span></th>
+            <th class="sortable" data-sort="manage_type">관리유형<span class="sort-ind"></span></th>
+            <th class="sortable" data-sort="item_type">품목유형<span class="sort-ind"></span></th>
+            <th class="sortable" data-sort="brand">브랜드<span class="sort-ind"></span></th>
+            <th class="sortable" data-sort="temperature">품온<span class="sort-ind"></span></th>
+            <th class="sortable" data-sort="name">품목명<span class="sort-ind"></span></th>
+            <th class="sortable num" data-sort="unit_weight">단량(g)<span class="sort-ind"></span></th>
+            <th class="sortable num" data-sort="unit_cost">원가(EA)<span class="sort-ind"></span></th>
+            <th class="sortable num" data-sort="normal_price">정상가(EA)<span class="sort-ind"></span></th>
+            <th class="sortable" data-sort="is_active">상태<span class="sort-ind"></span></th>
             <th></th>
           </tr>
         </thead>
@@ -170,7 +181,7 @@
     <div class="modal-body" style="grid-template-columns:1fr;gap:14px;">
       <div style="font-size:13px;color:var(--muted);line-height:1.6;">
         엑셀/스프레드시트에서 복사해 붙여넣거나, CSV 파일을 올리세요.<br>
-        <b>컬럼 순서:</b> ERP코드, 상품명, 품온, 단량(g), EA원가, EA정상가<br>
+        <b>컬럼 순서:</b> ERP코드, 고객, 제/상품, 관리유형, 품목유형, 브랜드, 품온, 품목명, 단량(g), 원가, 정상판매가<br>
         품온은 <b>실온 / 냉장 / 냉동</b> 중 하나. 첫 줄이 머리글(예: "ERP코드")이면 자동으로 건너뜁니다.
       </div>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
@@ -180,7 +191,7 @@
         <button class="btn-ghost btn-sm" id="bulk-sample">예시 채우기</button>
         <span id="bulk-filename" style="font-size:12px;color:var(--muted);"></span>
       </div>
-      <textarea id="bulk-text" placeholder="A001,순수본 전복죽,냉장,500,3200,5900&#10;A002,배도라지청,실온,1500,5775,19500" style="width:100%;min-height:140px;font-family:monospace;font-size:13px;padding:12px;border:1px solid var(--line);border-radius:10px;resize:vertical;"></textarea>
+      <textarea id="bulk-text" placeholder="A001,쿠팡,제품,자사,죽,순수본,냉장,순수본 전복죽,500,3200,5900" style="width:100%;min-height:140px;font-family:monospace;font-size:13px;padding:12px;border:1px solid var(--line);border-radius:10px;resize:vertical;"></textarea>
       <button class="btn-ghost btn-sm" id="bulk-preview-btn" style="justify-self:start;">미리보기 / 검증</button>
       <div id="bulk-preview" style="font-size:13px;"></div>
     </div>
@@ -204,6 +215,31 @@
         <input id="f-code" placeholder="예: A001" />
       </div>
       <div class="field">
+        <label>고객</label>
+        <input id="f-customer" list="dl-customer" placeholder="선택 또는 입력" />
+        <datalist id="dl-customer"></datalist>
+      </div>
+      <div class="field">
+        <label>제/상품</label>
+        <input id="f-make_type" list="dl-make_type" placeholder="선택 또는 입력" />
+        <datalist id="dl-make_type"></datalist>
+      </div>
+      <div class="field">
+        <label>관리유형</label>
+        <input id="f-manage_type" list="dl-manage_type" placeholder="선택 또는 입력" />
+        <datalist id="dl-manage_type"></datalist>
+      </div>
+      <div class="field">
+        <label>품목유형</label>
+        <input id="f-item_type" list="dl-item_type" placeholder="선택 또는 입력" />
+        <datalist id="dl-item_type"></datalist>
+      </div>
+      <div class="field">
+        <label>브랜드</label>
+        <input id="f-brand" list="dl-brand" placeholder="선택 또는 입력" />
+        <datalist id="dl-brand"></datalist>
+      </div>
+      <div class="field">
         <label>품온 <span class="req">*</span></label>
         <select id="f-temp">
           <option value="실온">실온</option>
@@ -212,7 +248,7 @@
         </select>
       </div>
       <div class="field full">
-        <label>상품명 <span class="req">*</span></label>
+        <label>품목명 <span class="req">*</span></label>
         <input id="f-name" placeholder="예: 순수본 전복죽 500g" />
       </div>
       <div class="field">
@@ -286,6 +322,7 @@
     if (me.role==="pending"||me.is_active===false) return showGate("⏳","승인 대기 중이에요","관리자 승인 후 이용 가능합니다.","로그아웃",logout);
     canEdit = (me.role==="master"||me.role==="admin");
     showApp();
+    await loadOptions();
     await loadProducts();
   }
 
@@ -312,24 +349,57 @@
     renderTable();
   }
 
+  let sortKey = "code", sortAsc = true;
+
   function renderTable() {
     const keyword=$("search").value.trim().toLowerCase();
     const includeInactive=$("show-inactive").checked;
-    const list=products.filter(p=>{
+    let list=products.filter(p=>{
       if(!includeInactive&&p.is_active===false) return false;
       if(!keyword) return true;
-      return (p.code||"").toLowerCase().includes(keyword)||(p.name||"").toLowerCase().includes(keyword);
+      // 검색: ERP코드/품목명/고객/브랜드 등 폭넓게
+      const hay=[p.code,p.name,p.customer,p.make_type,p.manage_type,p.item_type,p.brand].map(x=>(x||"").toLowerCase()).join(" ");
+      return hay.includes(keyword);
     });
+
+    // 정렬
+    list.sort((a,b)=>{
+      let va=a[sortKey], vb=b[sortKey];
+      if(["unit_weight","unit_cost","normal_price"].includes(sortKey)){
+        va=Number(va)||0; vb=Number(vb)||0;
+        return sortAsc ? va-vb : vb-va;
+      }
+      if(sortKey==="is_active"){
+        va=a.is_active===false?0:1; vb=b.is_active===false?0:1;
+        return sortAsc ? va-vb : vb-va;
+      }
+      va=(va||"").toString(); vb=(vb||"").toString();
+      return sortAsc ? va.localeCompare(vb,'ko') : vb.localeCompare(va,'ko');
+    });
+
+    // 정렬 표시기 갱신
+    document.querySelectorAll("th.sortable").forEach(th=>{
+      const ind=th.querySelector(".sort-ind");
+      if(ind) ind.textContent = (th.dataset.sort===sortKey) ? (sortAsc?"▲":"▼") : "";
+    });
+
     const tbody=$("rows");
     tbody.innerHTML="";
     $("empty").style.display=list.length?"none":"block";
     list.forEach(p=>{
       const tr=document.createElement("tr");
       if(p.is_active===false) tr.className="inactive";
+      const checked = selectedIds.has(p.id) ? "checked" : "";
       tr.innerHTML=`
+        <td style="text-align:center;"><input type="checkbox" class="row-chk" data-id="${p.id}" ${checked} /></td>
         <td class="code">${esc(p.code)}</td>
-        <td>${esc(p.name)}</td>
+        <td>${esc(p.customer||"")}</td>
+        <td>${esc(p.make_type||"")}</td>
+        <td>${esc(p.manage_type||"")}</td>
+        <td>${esc(p.item_type||"")}</td>
+        <td>${esc(p.brand||"")}</td>
         <td><span class="temp-tag">${esc(p.temperature)}</span></td>
+        <td>${esc(p.name)}</td>
         <td class="num">${comma(p.unit_weight)}</td>
         <td class="num">${comma(p.unit_cost)}</td>
         <td class="num">${comma(p.normal_price)}</td>
@@ -347,7 +417,70 @@
       }
       tbody.appendChild(tr);
     });
+
+    // 체크박스 이벤트
+    tbody.querySelectorAll(".row-chk").forEach(cb=>{
+      cb.addEventListener("change", ()=>{
+        const id=Number(cb.dataset.id);
+        if(cb.checked) selectedIds.add(id); else selectedIds.delete(id);
+        updateBulkBar();
+      });
+    });
+    updateBulkBar();
   }
+
+  // ── 정렬 헤더 클릭 ──
+  document.addEventListener("click", e=>{
+    const th=e.target.closest("th.sortable");
+    if(!th) return;
+    const key=th.dataset.sort;
+    if(sortKey===key) sortAsc=!sortAsc; else { sortKey=key; sortAsc=true; }
+    renderTable();
+  });
+
+  // ── 체크박스 일괄 선택/작업 ──
+  let selectedIds = new Set();
+  function updateBulkBar(){
+    const n=selectedIds.size;
+    const show = canEdit && n>0;
+    $("btn-bulk-delete").style.display = show ? "inline-block" : "none";
+    $("btn-bulk-deactivate").style.display = show ? "inline-block" : "none";
+    if(show){
+      $("btn-bulk-delete").textContent = `🗑 선택 삭제 (${n})`;
+      $("btn-bulk-deactivate").textContent = `⊘ 선택 비활성 (${n})`;
+    }
+    // 전체선택 체크박스 상태
+    const all=$("chk-all");
+    const visible=[...document.querySelectorAll(".row-chk")];
+    if(all) all.checked = visible.length>0 && visible.every(cb=>cb.checked);
+  }
+  $("chk-all") && $("chk-all").addEventListener("change", e=>{
+    const on=e.target.checked;
+    document.querySelectorAll(".row-chk").forEach(cb=>{
+      cb.checked=on;
+      const id=Number(cb.dataset.id);
+      if(on) selectedIds.add(id); else selectedIds.delete(id);
+    });
+    updateBulkBar();
+  });
+  $("btn-bulk-deactivate") && $("btn-bulk-deactivate").addEventListener("click", async()=>{
+    const ids=[...selectedIds];
+    if(ids.length===0) return;
+    if(!confirm(`선택한 ${ids.length}개 상품을 비활성 처리할까요?`)) return;
+    const { error } = await sb.from("products").update({is_active:false,updated_by:me.id,updated_at:new Date().toISOString()}).in("id",ids);
+    if(error){ alert("처리 실패: "+error.message); return; }
+    selectedIds.clear();
+    await loadProducts();
+  });
+  $("btn-bulk-delete") && $("btn-bulk-delete").addEventListener("click", async()=>{
+    const ids=[...selectedIds];
+    if(ids.length===0) return;
+    if(!confirm(`선택한 ${ids.length}개 상품을 완전히 삭제할까요?\n관련 가격정책(입수량)도 함께 삭제되며 되돌릴 수 없습니다.`)) return;
+    const { error } = await sb.from("products").delete().in("id",ids);
+    if(error){ alert("삭제 실패: "+error.message); return; }
+    selectedIds.clear();
+    await loadProducts();
+  });
 
   // ════════════════════════════════════════════
   //  상품 일괄등록
@@ -364,7 +497,7 @@
 
   // 예시 채우기
   $("bulk-sample") && $("bulk-sample").addEventListener("click", ()=>{
-    $("bulk-text").value = "ERP코드,상품명,품온,단량(g),EA원가,EA정상가\nA001,순수본 전복죽,냉장,500,3200,5900\nA002,배도라지청,실온,1500,5775,19500";
+    $("bulk-text").value = "ERP코드,고객,제/상품,관리유형,품목유형,브랜드,품온,품목명,단량,원가,정상판매가\nA001,쿠팡,제품,자사,죽,순수본,냉장,순수본 전복죽,500,3200,5900\nA002,네이버,상품,위탁,청,순수본,실온,배도라지청,1500,5775,19500";
   });
 
   // CSV 파일 읽기
@@ -409,12 +542,12 @@
     const ok=[], errs=[];
     lines.forEach((line, i)=>{
       const cols = splitLine(line).map(s=>s.trim());
-      const [code,name,temp,weight,cost,normal] = cols;
+      const [code,customer,make_type,manage_type,item_type,brand,temp,name,weight,cost,normal] = cols;
       const rowNo = i+1;
       const problems = [];
-      if(cols.length < 6) problems.push("컬럼이 6개 미만");
+      if(cols.length < 11) problems.push("컬럼이 11개 미만");
       if(!code) problems.push("ERP코드 없음");
-      if(!name) problems.push("상품명 없음");
+      if(!name) problems.push("품목명 없음");
       if(!VALID_TEMPS.includes(temp)) problems.push(`품온 '${temp||""}' 잘못됨`);
       if(code && existingCodes.has(code)) problems.push("이미 등록된 코드");
       if(code && seenCodes.has(code)) problems.push("입력 내 중복 코드");
@@ -424,6 +557,8 @@
       } else {
         ok.push({
           code, name, temperature:temp,
+          customer:customer||null, make_type:make_type||null, manage_type:manage_type||null,
+          item_type:item_type||null, brand:brand||null,
           unit_weight: unComma(weight), unit_cost: unComma(cost), normal_price: unComma(normal),
         });
       }
@@ -435,9 +570,9 @@
     if(ok.length>0){
       html += `<div style="margin:6px 0 4px;font-weight:600;color:var(--accent);">✓ 등록 가능 ${ok.length}건</div>`;
       html += '<div style="max-height:180px;overflow:auto;border:1px solid var(--line);border-radius:8px;"><table style="width:100%;font-size:12px;border-collapse:collapse;">';
-      html += '<thead><tr style="background:#fafbfa;"><th style="padding:5px 8px;text-align:left;">ERP</th><th style="padding:5px 8px;text-align:left;">상품명</th><th style="padding:5px 8px;">품온</th><th style="padding:5px 8px;text-align:right;">단량</th><th style="padding:5px 8px;text-align:right;">원가</th><th style="padding:5px 8px;text-align:right;">정상가</th></tr></thead><tbody>';
+      html += '<thead><tr style="background:#fafbfa;"><th style="padding:5px 8px;text-align:left;">ERP</th><th style="padding:5px 8px;">고객</th><th style="padding:5px 8px;">제/상품</th><th style="padding:5px 8px;">관리유형</th><th style="padding:5px 8px;">품목유형</th><th style="padding:5px 8px;">브랜드</th><th style="padding:5px 8px;">품온</th><th style="padding:5px 8px;text-align:left;">품목명</th><th style="padding:5px 8px;text-align:right;">단량</th><th style="padding:5px 8px;text-align:right;">원가</th><th style="padding:5px 8px;text-align:right;">정상가</th></tr></thead><tbody>';
       ok.forEach(p=>{
-        html += `<tr style="border-top:1px solid var(--line);"><td style="padding:5px 8px;">${esc(p.code)}</td><td style="padding:5px 8px;">${esc(p.name)}</td><td style="padding:5px 8px;text-align:center;">${esc(p.temperature)}</td><td style="padding:5px 8px;text-align:right;">${p.unit_weight.toLocaleString()}</td><td style="padding:5px 8px;text-align:right;">${p.unit_cost.toLocaleString()}</td><td style="padding:5px 8px;text-align:right;">${p.normal_price.toLocaleString()}</td></tr>`;
+        html += `<tr style="border-top:1px solid var(--line);"><td style="padding:5px 8px;">${esc(p.code)}</td><td style="padding:5px 8px;">${esc(p.customer||"")}</td><td style="padding:5px 8px;">${esc(p.make_type||"")}</td><td style="padding:5px 8px;">${esc(p.manage_type||"")}</td><td style="padding:5px 8px;">${esc(p.item_type||"")}</td><td style="padding:5px 8px;">${esc(p.brand||"")}</td><td style="padding:5px 8px;text-align:center;">${esc(p.temperature)}</td><td style="padding:5px 8px;">${esc(p.name)}</td><td style="padding:5px 8px;text-align:right;">${p.unit_weight.toLocaleString()}</td><td style="padding:5px 8px;text-align:right;">${p.unit_cost.toLocaleString()}</td><td style="padding:5px 8px;text-align:right;">${p.normal_price.toLocaleString()}</td></tr>`;
       });
       html += '</tbody></table></div>';
     }
@@ -461,6 +596,10 @@
     const payload = bulkParsed.map(p=>({ ...p, is_active:true, created_by:me.id, updated_by:me.id, updated_at:now }));
     const { error } = await sb.from("products").insert(payload);
     if(error){ alert("등록 실패: "+error.message); $("bulk-save").disabled=false; return; }
+    // 일괄등록에 포함된 새 옵션값들을 product_options에 누적
+    for(const p of bulkParsed){
+      await ensureOptions({ customer:p.customer, make_type:p.make_type, manage_type:p.manage_type, item_type:p.item_type, brand:p.brand });
+    }
     $("bulk-overlay").classList.remove("show");
     await loadProducts();
     alert(`✓ ${bulkParsed.length}건 등록 완료`);
@@ -474,6 +613,11 @@
     $("f-code").value=p?p.code:""; $("f-code").disabled=!!p;
     $("f-name").value=p?p.name:"";
     $("f-temp").value=p?p.temperature:"실온";
+    $("f-customer").value    = p?(p.customer||""):"";
+    $("f-make_type").value   = p?(p.make_type||""):"";
+    $("f-manage_type").value = p?(p.manage_type||""):"";
+    $("f-item_type").value   = p?(p.item_type||""):"";
+    $("f-brand").value       = p?(p.brand||""):"";
     $("f-weight").value=p?comma(p.unit_weight):"";
     $("f-cost").value=p?comma(p.unit_cost):"";
     $("f-normal").value=p?comma(p.normal_price):"";
@@ -516,6 +660,11 @@
       code:$("f-code").value.trim(),
       name:$("f-name").value.trim(),
       temperature:$("f-temp").value,
+      customer:    $("f-customer").value.trim()||null,
+      make_type:   $("f-make_type").value.trim()||null,
+      manage_type: $("f-manage_type").value.trim()||null,
+      item_type:   $("f-item_type").value.trim()||null,
+      brand:       $("f-brand").value.trim()||null,
       unit_weight:unComma($("f-weight").value),
       unit_cost:unComma($("f-cost").value),
       normal_price:unComma($("f-normal").value),
@@ -532,8 +681,46 @@
       ({error}=await sb.from("products").update(payload).eq("id",editingId));
     }
     if(error){alert("저장 실패: "+error.message);return;}
+    // 새로 입력된 옵션값을 product_options에 등록 (드롭다운 누적용)
+    await ensureOptions({
+      customer: payload.customer, make_type: payload.make_type,
+      manage_type: payload.manage_type, item_type: payload.item_type, brand: payload.brand,
+    });
     closeModal();
     await loadProducts();
+  }
+
+  // ── 옵션 마스터 로드 / 신규값 등록 ──
+  let optionsMap = { customer:[], make_type:[], manage_type:[], item_type:[], brand:[] };
+  async function loadOptions(){
+    try {
+      const { data } = await sb.from("product_options").select("*").order("sort_order",{ascending:true});
+      const m = { customer:[], make_type:[], manage_type:[], item_type:[], brand:[] };
+      (data||[]).forEach(o=>{ if(m[o.field]) m[o.field].push(o.value); });
+      optionsMap = m;
+    } catch(e){}
+    fillDatalists();
+  }
+  function fillDatalists(){
+    ["customer","make_type","manage_type","item_type","brand"].forEach(f=>{
+      const dl=$("dl-"+f); if(!dl) return;
+      dl.innerHTML = (optionsMap[f]||[]).map(v=>`<option value="${esc(v)}"></option>`).join("");
+    });
+  }
+  // 입력된 값 중 목록에 없는 새 값을 product_options에 추가
+  async function ensureOptions(vals){
+    const toAdd=[];
+    Object.entries(vals).forEach(([field,value])=>{
+      if(value && optionsMap[field] && !optionsMap[field].includes(value)){
+        const maxOrder = optionsMap[field].length; // 맨 뒤에 추가
+        toAdd.push({ field, value, sort_order: maxOrder });
+        optionsMap[field].push(value);
+      }
+    });
+    if(toAdd.length>0){
+      try { await sb.from("product_options").insert(toAdd); } catch(e){}
+      fillDatalists();
+    }
   }
 
   async function toggleActive(p) {
@@ -563,4 +750,5 @@
 </script>
 </body>
 </html>
+
 
