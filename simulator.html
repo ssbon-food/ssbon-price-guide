@@ -588,9 +588,7 @@
     const info = $('product-info');
     info.style.display='block';
     info.textContent=`${currentProduct.code} · 단량 ${comma(currentProduct.unit_weight)}g`;
-    const { data:units } = await sb.from('product_units')
-      .select('*').eq('product_id',currentProduct.id).eq('is_active',true).order('box_qty');
-    renderUnitRows(units||[]); renderResultTable();
+    await loadUnitsForCurrent();
   });
 
   $('sel-channel').addEventListener('change', async e=>{
@@ -616,13 +614,38 @@
       const temp = currentProduct?.temperature||$('disp-temp').value||'실온';
       $('disp-freight2').value = comma(freightMaster[temp].consign)+'원/박스';
     }
-    renderResultTable();
+    await loadUnitsForCurrent();
   });
 
   function resetUnitTable(){
     $('unit-rows').innerHTML='<tr><td colspan="9" class="placeholder">입수량 추가 버튼을 눌러 시뮬레이션을 시작하세요</td></tr>';
     $('result-body').innerHTML='<tr><td colspan="7" class="placeholder">상품과 판매처를 선택하면 손익 비교표가 나타납니다</td></tr>';
     $('detail-panel').classList.remove('show'); $('action-bar').style.display='none';
+  }
+
+  // 현재 상품(+채널)에 맞는 입수량 행을 불러온다.
+  // 채널이 선택돼 있으면 그 채널에 '연결된' 입수량만 표시.
+  async function loadUnitsForCurrent(){
+    if (!currentProduct){ renderUnitRows([]); renderResultTable(); return; }
+    // 1) 상품의 전체 입수량(공통 가격)
+    const { data:allUnits } = await sb.from('product_units')
+      .select('*').eq('product_id',currentProduct.id).eq('is_active',true).order('box_qty');
+    let units = allUnits || [];
+
+    // 2) 채널이 선택돼 있으면 연결된 unit_id만 필터
+    if (currentChannel){
+      const unitIds = units.map(u=>u.id);
+      let linkedIds = new Set();
+      if (unitIds.length>0){
+        const { data:links } = await sb.from('unit_channels')
+          .select('unit_id').eq('channel_id',currentChannel.id).in('unit_id',unitIds);
+        (links||[]).forEach(l=>linkedIds.add(l.unit_id));
+      }
+      // 연결된 것만 남김 (연결 정보가 하나도 없으면 빈 목록 = 아직 이 채널엔 미설정)
+      units = units.filter(u=>linkedIds.has(u.id));
+    }
+    renderUnitRows(units);
+    renderResultTable();
   }
 
   function renderUnitRows(units){
@@ -1008,24 +1031,66 @@
       $('product-info').textContent=`${newProd.code||''} · 단량 ${comma(newProd.unit_weight)}g`;
     } else {
       if (!currentProduct){ alert('상품을 선택해 주세요.'); return; }
-      if (!confirm('현재 시뮬레이터 설정을 가격정책에 반영할까요?\n기존 가격정책이 덮어씌워집니다.')) return;
+      if (!confirm(`'${currentChannel?currentChannel.name:''}' 채널의 가격정책에 반영할까요?\n이 채널의 입수량 구성만 갱신되고, 다른 채널은 유지됩니다.`)) return;
       await sb.from('products').update({
         unit_cost: parseFloat($('inp-unit-cost').value)||0, normal_price: parseFloat($('inp-normal-price').value)||0,
         updated_by: me.id, updated_at: new Date().toISOString(),
       }).eq('id',currentProduct.id);
     }
-    const upsertData = rows.map(tr=>({
-      product_id: currentProduct.id,
-      box_qty:    parseInt(numC(tr.querySelector('.qty').value))||1,
+    if (!currentChannel){ alert('판매처(채널)를 먼저 선택해 주세요.'); return; }
+
+    // 화면의 입수량 행들 (box_qty + 가격)
+    const formRows = rows.map(tr=>({
+      box_qty:      parseInt(numC(tr.querySelector('.qty').value))||1,
       normal_price: numC(tr.querySelector('.np').value)||0,
       always_price: numC(tr.querySelector('.ap').value)||0,
       max_price:    numC(tr.querySelector('.mp').value)||0,
-      is_active: true, updated_by: me.id, updated_at: new Date().toISOString(),
     }));
-    await sb.from('product_units').delete().eq('product_id',currentProduct.id);
-    const { error } = await sb.from('product_units').insert(upsertData);
-    if (error){ alert('반영 실패: '+error.message); return; }
-    flash(isNew ? '✓ 상품마스터 등록 + 가격정책 반영 완료' : '✓ 가격정책에 반영됐어요');
+
+    // 1) 이 상품의 기존 입수량(공통 가격) 전체 조회
+    const { data:existing } = await sb.from('product_units')
+      .select('*').eq('product_id',currentProduct.id).eq('is_active',true);
+    const existMap = {};
+    (existing||[]).forEach(u=>{ existMap[u.box_qty] = u; });
+
+    // 2) 화면에 있는 각 입수량을 공통 가격으로 upsert → unit_id 확보
+    const keepUnitIds = [];  // 이번에 이 채널에 연결할 unit_id 목록
+    for (const fr of formRows){
+      const payload = {
+        product_id: currentProduct.id, box_qty: fr.box_qty,
+        normal_price: fr.normal_price, always_price: fr.always_price, max_price: fr.max_price,
+        is_active: true, updated_by: me.id, updated_at: new Date().toISOString(),
+      };
+      let unitId;
+      if (existMap[fr.box_qty]){
+        // 기존 입수량이면 가격만 갱신 (공통 가격이므로 최신값으로 덮어씀)
+        const { error:uErr } = await sb.from('product_units').update(payload).eq('id',existMap[fr.box_qty].id);
+        if (uErr){ alert('가격 저장 실패: '+uErr.message); return; }
+        unitId = existMap[fr.box_qty].id;
+      } else {
+        // 신규 입수량이면 새로 생성
+        payload.created_by = me.id;
+        const { data:ins, error:iErr } = await sb.from('product_units').insert(payload).select('id').single();
+        if (iErr){ alert('가격 저장 실패: '+iErr.message); return; }
+        unitId = ins.id;
+        existMap[fr.box_qty] = { id: unitId };
+      }
+      keepUnitIds.push(unitId);
+    }
+
+    // 3) 이 채널의 기존 연결을 모두 끊고, 화면에 있는 입수량만 다시 연결
+    //    → 다른 채널의 연결은 건드리지 않으므로 카카오톡딜 4개입은 그대로 유지됨
+    await sb.from('unit_channels').delete().eq('channel_id',currentChannel.id)
+      .in('unit_id', (existing||[]).map(u=>u.id));  // 이 상품의 unit 중 이 채널 연결만 제거
+    if (keepUnitIds.length>0){
+      const linkRows = keepUnitIds.map(uid=>({ unit_id: uid, channel_id: currentChannel.id }));
+      const { error:lErr } = await sb.from('unit_channels').insert(linkRows);
+      if (lErr){ alert('채널 연결 저장 실패: '+lErr.message); return; }
+    }
+
+    flash(isNew
+      ? `✓ 상품 등록 + '${currentChannel.name}' 가격정책 반영 완료`
+      : `✓ '${currentChannel.name}' 가격정책에 반영됐어요`);
   });
 
   $('btn-scenario').addEventListener('click', async()=>{
@@ -1138,6 +1203,7 @@
 </script>
 </body>
 </html>
+
 
 
 
