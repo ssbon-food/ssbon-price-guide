@@ -14,7 +14,7 @@
       --caution:#9a7b1f; --caution-bg:#f6efd8;
       --bad:#b4452f; --bad-bg:#f6e2dc;
       --radius:12px; --shadow:0 1px 2px rgba(20,40,30,.05),0 8px 24px rgba(20,40,30,.06);
-      --fix-w: 350px; /* 고정 컬럼 총 너비: 상품명220 + 품온50 + 원가80 */
+      --fix-w: 680px; /* 고정 영역: 상품/입수량 + 원가 + 가격(정상/상시/최대) */
     }
     *{box-sizing:border-box;margin:0;padding:0;}
     body{font-family:"Pretendard",-apple-system,"Malgun Gothic",sans-serif;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.5;}
@@ -37,6 +37,8 @@
     .filter-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:12px 16px;box-shadow:var(--shadow);}
     .filter-bar label{font-size:12px;font-weight:600;color:var(--muted);white-space:nowrap;}
     .filter-bar select{font-family:inherit;font-size:13px;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:#fafbfa;color:var(--ink);}
+    .filter-bar .filter-input{font-family:inherit;font-size:13px;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:#fafbfa;color:var(--ink);min-width:180px;}
+    .filter-bar .filter-input:focus{outline:none;border-color:var(--accent);background:#fff;}
     .filter-bar select:focus{outline:none;border-color:var(--accent);}
     .filter-sep{color:var(--line);font-size:18px;}
     .filter-bar .spacer{flex:1;}
@@ -50,15 +52,15 @@
 
     /* 왼쪽 고정 테이블 */
     .table-fixed{flex:0 0 var(--fix-w);width:var(--fix-w);overflow:hidden;border-right:2px solid #aacfbb;z-index:2;background:var(--panel);}
-    .table-fixed table{width:var(--fix-w);table-layout:fixed;border-collapse:collapse;font-size:12.5px;}
+    .table-fixed table{width:var(--fix-w);table-layout:auto;border-collapse:collapse;font-size:12.5px;}
 
     /* 오른쪽 스크롤 테이블 */
     .table-scroll{flex:1;overflow-x:auto;overflow-y:hidden;}
     .table-scroll table{border-collapse:collapse;font-size:12.5px;white-space:nowrap;}
 
     /* 공통 th/td */
-    .tbl th{padding:7px 10px;font-size:11px;color:var(--muted);font-weight:600;border-bottom:1px solid var(--line);border-right:1px solid var(--line);background:#fafbfa;text-align:center;white-space:nowrap;}
-    .tbl td{padding:6px 10px;border-bottom:1px solid var(--line);border-right:1px solid var(--line);text-align:right;vertical-align:middle;white-space:nowrap;height:36px;}
+    .tbl th{padding:7px 7px;font-size:11px;color:var(--muted);font-weight:600;border-bottom:1px solid var(--line);border-right:1px solid var(--line);background:#fafbfa;text-align:center;white-space:nowrap;}
+    .tbl td{padding:6px 7px;border-bottom:1px solid var(--line);border-right:1px solid var(--line);text-align:right;vertical-align:middle;white-space:nowrap;height:36px;}
     .tbl th:last-child,.tbl td:last-child{border-right:none;}
     .tbl th.left{text-align:left;}
     .tbl td.left{text-align:left;}
@@ -97,6 +99,30 @@
   .ssbon-nav-btn:hover{background:#f0f3f0;}
   .ssbon-nav-btn.primary{color:#fff;background:#2f7d4f;border-color:#2f7d4f;}
   .ssbon-nav-btn.primary:hover{background:#266a42;}
+
+    /* 가격 그룹 컬러 */
+    .tbl th.grp-n{background:#f0f7f2;color:#2f7d4f;}
+    .tbl th.grp-a{background:#f0f4f9;color:#1a5fa8;}
+    .tbl th.grp-m{background:#fdf0f0;color:#b4452f;}
+    .tbl td.grp-n{background:#fafdf9;}
+    .tbl td.grp-a{background:#f7f9fd;}
+    .tbl td.grp-m{background:#fdf9f9;}
+    .tbl td.grp-a:first-of-type{}
+    /* 모달 */
+    .modal-overlay{position:fixed;inset:0;z-index:9998;background:rgba(20,30,25,.45);display:none;align-items:center;justify-content:center;padding:20px;}
+    .modal-overlay.show{display:flex;}
+    .modal-box{background:#fff;border-radius:16px;padding:22px 24px;max-width:380px;width:100%;box-shadow:0 20px 60px -20px rgba(0,0,0,.4);position:relative;max-height:90vh;overflow-y:auto;}
+    .modal-close{position:absolute;top:14px;right:14px;background:none;border:none;font-size:16px;color:var(--muted);cursor:pointer;padding:4px 8px;border-radius:6px;}
+    .modal-close:hover{background:#f0f3f0;}
+    .md-head{font-size:14px;font-weight:700;color:var(--ink);margin-bottom:4px;}
+    .md-dist{background:#f0f4fb;border-radius:8px;padding:7px 9px;margin-bottom:7px;}
+    .md-row{display:grid;grid-template-columns:1fr 46px 46px 70px;gap:0 4px;align-items:center;padding:2.5px 0;font-size:12px;}
+    .md-row .mk{color:var(--muted);text-align:left;}
+    .md-row .mp1,.md-row .mp2{text-align:right;color:var(--muted);font-variant-numeric:tabular-nums;}
+    .md-row .mv{text-align:right;color:var(--ink);font-variant-numeric:tabular-nums;}
+    .md-row.b{padding:4px 0;}
+    .md-row.b .mk,.md-row.b .mp1,.md-row.b .mp2,.md-row.b .mv{font-weight:700;color:var(--ink);}
+    .md-line{height:1px;background:var(--line);margin:5px 0;}
   </style>
 </head>
 <body>
@@ -147,25 +173,20 @@
 <div id="app" style="display:none;">
   <div class="page-wrap">
 
-    <!-- 필터 바 -->
+    <!-- 필터 바 (검색형) -->
     <div class="filter-bar">
       <label>상품</label>
-      <select id="filter-product">
-        <option value="">전체 상품</option>
+      <input id="filter-product" class="filter-input" type="text" placeholder="ERP코드 또는 상품명으로 검색..." autocomplete="off" />
+      <span class="filter-sep">|</span>
+      <label>채널유형</label>
+      <select id="filter-chtype">
+        <option value="">선택 ▾</option>
+        <option value="consign">위탁</option>
+        <option value="direct">직납</option>
       </select>
       <span class="filter-sep">|</span>
       <label>판매처</label>
-      <select id="filter-channel">
-        <option value="">전체 판매처</option>
-      </select>
-      <span class="filter-sep">|</span>
-      <label>품온</label>
-      <select id="filter-temp">
-        <option value="">전체</option>
-        <option value="실온">실온</option>
-        <option value="냉장">냉장</option>
-        <option value="냉동">냉동</option>
-      </select>
+      <input id="filter-channel" class="filter-input" type="text" placeholder="판매처명으로 검색..." autocomplete="off" />
       <div class="spacer"></div>
       <span style="font-size:12px;color:var(--muted);">
         <span class="badge-sm good">●</span> 20%↑&nbsp;
@@ -180,6 +201,14 @@
       <div class="table-scroll" id="table-scroll"></div>
     </div>
 
+  </div>
+</div>
+
+<!-- 상세손익 모달 -->
+<div id="detail-modal" class="modal-overlay">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeDetailModal()">✕</button>
+    <div id="modal-body"></div>
   </div>
 </div>
 
@@ -202,13 +231,15 @@
   }
 
   let me = null;
-  let allProducts = [], allChannels = [], allUnits = [], allLogistics = [], allFreight = [];
+  let allProducts = [], allChannels = [], allUnits = [], allLogistics = [], allFreight = [], allLinks = [];
   let freightMap = {}; // temperature => consign_freight
   let logisticsMap = {}; // channel_id+temperature => {freight_rate, dist_rate}
+  let linkSet = new Set(); // "unit_id_channel_id" 연결 집합
 
   const $ = id => document.getElementById(id);
   const comma = n => Number(Math.round(n)||0).toLocaleString('ko-KR');
   const pct = n => n.toFixed(1)+'%';
+  const won = n => comma(n)+'원';
   $('gateBtn').addEventListener('click',   async()=>{ await sb.auth.signOut(); location.href='./index.html'; });
 
   (async function guard(){
@@ -229,58 +260,70 @@
   })();
 
   async function loadAll(){
-    // 각 쿼리를 독립적으로 실행 (하나 실패해도 나머지 진행)
     try { const r=await sb.from('products').select('*').eq('is_active',true).order('code'); allProducts=r.data||[]; } catch(e){ allProducts=[]; }
     try { const r=await sb.from('channels').select('*').eq('is_active',true).order('name'); allChannels=r.data||[]; } catch(e){ allChannels=[]; }
     try { const r=await sb.from('product_units').select('*').eq('is_active',true).order('box_qty'); allUnits=r.data||[]; } catch(e){ allUnits=[]; }
     try { const r=await sb.from('logistics').select('*').eq('is_active',true); allFreight=r.data||[]; } catch(e){ allFreight=[]; }
     try { const r=await sb.from('channel_logistics').select('*'); allLogistics=r.data||[]; } catch(e){ allLogistics=[]; }
+    try { const r=await sb.from('unit_channels').select('*'); allLinks=r.data||[]; } catch(e){ allLinks=[]; }
 
-    // 위탁 운반비 맵
+    freightMap = {}; logisticsMap = {}; linkSet = new Set();
     allFreight.forEach(f=>{ freightMap[f.temperature] = f.consign_freight||0; });
-    // 직납 운반비/유통사이익율 맵
     allLogistics.forEach(l=>{ logisticsMap[`${l.channel_id}_${l.temperature}`] = l; });
-
-    // 필터 드롭다운 채우기
-    const fp = $('filter-product');
-    allProducts.forEach(p=>{ const o=document.createElement('option'); o.value=p.id; o.textContent=`${p.code} · ${p.name}`; fp.appendChild(o); });
-    const fc = $('filter-channel');
-    allChannels.forEach(c=>{ const o=document.createElement('option'); o.value=c.id; o.textContent=c.name; fc.appendChild(o); });
+    allLinks.forEach(l=>{ linkSet.add(`${l.unit_id}_${l.channel_id}`); });
 
     renderTable();
   }
 
-  ['filter-product','filter-channel','filter-temp'].forEach(id=>{
-    $(id) && $(id).addEventListener('change', renderTable);
-  });
+  // 필터 이벤트 (검색형 input + 채널유형 select)
+  ['filter-product','filter-channel'].forEach(id=>{ $(id) && $(id).addEventListener('input', renderTable); });
+  $('filter-chtype') && $('filter-chtype').addEventListener('change', renderTable);
 
-  function calcProfit(price, boxQty, product, channel){
+  // ── 손익 계산 (시뮬레이터와 동일: 직납 case1/case2) ──
+  // price=이 가격대, normalP=정상가(직납 기준점), 상세값 모두 반환
+  function calcProfit(price, boxQty, product, channel, normalP){
     if (!price) return null;
-    const vatEx = price/1.1;
-    const isDirect = channel.channel_type==='direct';
-    const temp = product.temperature;
-    const lKey = `${channel.id}_${temp}`;
-    const lData = logisticsMap[lKey]||{freight_rate:0,dist_rate:0};
-    const distRate = isDirect ? (lData.dist_rate||0) : 0;
-    const distProfit = isDirect ? vatEx*(distRate/100) : 0;
-    const supply = vatEx - distProfit;
-    const cost = (product.unit_cost||0) * boxQty;
-    const feeBase = channel.commission_base==='vat' ? price : supply;
-    const fee = feeBase * ((channel.commission_rate||0)/100);
-    const adVal = channel.ad_value||0;
-    const ad = channel.ad_type==='fixed' ? adVal : supply*(adVal/100);
-    const promoVal = channel.promotion_value||0;
-    const promo = channel.promotion_type==='fixed' ? promoVal : supply*(promoVal/100);
-    let freight;
-    if(isDirect){ freight = supply*((lData.freight_rate||0)/100); }
-    else { freight = (freightMap[temp]||0)/(boxQty||1); }
-    const hqVal = channel.hq_value||0;
-    const hq = channel.hq_type==='fixed' ? hqVal : supply*(hqVal/100);
-    const divVal = channel.div_value||0;
-    const div = channel.div_type==='fixed' ? divVal : supply*(divVal/100);
-    const opProfit = supply-cost-fee-ad-promo-freight-hq-div;
-    const opRate   = supply>0 ? opProfit/supply*100 : 0;
-    return { opProfit, opRate };
+    const vatEx   = price/1.1;
+    const isDirect= channel.channel_type==='direct';
+    const temp    = product.temperature;
+    const lData   = logisticsMap[`${channel.id}_${temp}`] || {freight_rate:0, dist_rate:0};
+    const cost    = (product.unit_cost||0) * boxQty;
+    const adVal   = channel.ad_value||0;
+    const promoVal= channel.promotion_value||0;
+    const hqVal   = channel.hq_value||0;
+    const divVal  = channel.div_value||0;
+
+    if (isDirect){
+      const distRate  = lData.dist_rate||0;
+      const dType     = channel.discount_type || 'case1';
+      const normVatEx = (normalP||price)/1.1;
+      const discVatEx = vatEx;
+      const baseVatEx = (dType==='case2') ? discVatEx : normVatEx;
+      const distProfit= baseVatEx*(distRate/100);
+      const supply    = baseVatEx - distProfit;
+      const fee   = supply*((channel.commission_rate||0)/100);
+      const ad    = channel.ad_type==='fixed' ? adVal : supply*(adVal/100);
+      const promo = channel.promotion_type==='fixed' ? promoVal : supply*(promoVal/100);
+      const freight = supply*((lData.freight_rate||0)/100);
+      const hq    = channel.hq_type==='fixed' ? hqVal : supply*(hqVal/100);
+      const div   = channel.div_type==='fixed' ? divVal : supply*(divVal/100);
+      const discShare = (dType==='case1') ? (normVatEx - discVatEx) : 0;
+      const opProfit = supply - cost - discShare - fee - ad - promo - freight - hq - div;
+      const opRate   = supply>0 ? opProfit/supply*100 : 0;
+      return { price, vatEx:discVatEx, normVatEx, distRate, distProfit, supply, cost, fee, ad, promo, freight, hq, div, discShare, dType, opProfit, opRate, isDirect:true };
+    } else {
+      const supply = vatEx;
+      const feeBase= channel.commission_base==='vat' ? price : supply;
+      const fee    = feeBase * ((channel.commission_rate||0)/100);
+      const ad     = channel.ad_type==='fixed' ? adVal : supply*(adVal/100);
+      const promo  = channel.promotion_type==='fixed' ? promoVal : supply*(promoVal/100);
+      const freight= (freightMap[temp]||0);
+      const hq     = channel.hq_type==='fixed' ? hqVal : supply*(hqVal/100);
+      const div    = channel.div_type==='fixed' ? divVal : supply*(divVal/100);
+      const opProfit = supply-cost-fee-ad-promo-freight-hq-div;
+      const opRate   = supply>0 ? opProfit/supply*100 : 0;
+      return { price, vatEx, distRate:0, distProfit:0, supply, cost, fee, ad, promo, freight, hq, div, discShare:0, opProfit, opRate, isDirect:false };
+    }
   }
 
   function badge(rate){
@@ -289,130 +332,153 @@
     return `<span class="bdg ${cls}">${pct(rate)}</span>`;
   }
 
-  function renderTable(){
-    const selProd = $('filter-product').value;
-    const selChan = $('filter-channel').value;
-    const selTemp = $('filter-temp').value;
+  // 입수량이 채널에 연결됐는지
+  function isLinked(unitId, channelId){ return linkSet.has(`${unitId}_${channelId}`); }
 
+  function renderTable(){
+    const qProd = ($('filter-product').value||'').trim().toLowerCase();
+    const qChan = ($('filter-channel').value||'').trim().toLowerCase();
+    const selType= $('filter-chtype').value;
+
+    // 상품 필터 (코드/이름 검색)
     const products = allProducts.filter(p=>{
-      if(selProd && String(p.id)!==String(selProd)) return false;
-      if(selTemp && p.temperature!==selTemp) return false;
-      return true;
+      if(!qProd) return true;
+      return (`${p.code||''} ${p.name||''}`).toLowerCase().includes(qProd);
     });
+    // 채널 필터 (유형 + 이름 검색)
     const channels = allChannels.filter(c=>{
-      if(selChan && String(c.id)!==String(selChan)) return false;
+      if(selType && c.channel_type!==selType) return false;
+      if(qChan && !(`${c.name||''}`).toLowerCase().includes(qChan)) return false;
       return true;
     });
 
     const fixedDiv  = $('table-fixed');
     const scrollDiv = $('table-scroll');
 
-    if(products.length===0||channels.length===0){
-      fixedDiv.innerHTML  = '<div class="empty-row" style="padding:40px 20px;">표시할 데이터 없음</div>';
+    if(products.length===0){
+      fixedDiv.innerHTML  = '<div class="empty-row" style="padding:40px 20px;">표시할 상품이 없습니다</div>';
       scrollDiv.innerHTML = '';
       return;
     }
 
     const unitsMap = {};
-    allUnits.forEach(u=>{
-      if(!unitsMap[u.product_id]) unitsMap[u.product_id]=[];
-      unitsMap[u.product_id].push(u);
-    });
+    allUnits.forEach(u=>{ if(!unitsMap[u.product_id]) unitsMap[u.product_id]=[]; unitsMap[u.product_id].push(u); });
 
-    // ── 왼쪽 고정 테이블 (상품/입수량 + 품온 + 원가) ──
-    let fHtml = `<table class="tbl" style="width:350px;table-layout:fixed;">
+    // ════════════════════════════════════════════
+    // 왼쪽 고정: 상품/입수량 + 원가 + [가격 공통영역: 정상/상시/최대]
+    //   - 정상판매가: 판매가, 개당가
+    //   - 상시할인가: 할인율, 판매가, 개당가
+    //   - 최대할인가: 할인율, 판매가, 개당가
+    // ════════════════════════════════════════════
+    let fHtml = `<table class="tbl" style="table-layout:auto;">
       <thead>
         <tr>
-          <th class="left" rowspan="3" style="width:220px;vertical-align:middle;">상품 / 입수량</th>
-          <th rowspan="3" style="width:50px;vertical-align:middle;">품온</th>
-          <th rowspan="3" style="width:80px;vertical-align:middle;border-right:none;">원가<br><span style="font-weight:400;">(EA)</span></th>
+          <th class="left" rowspan="2" style="vertical-align:middle;min-width:150px;">상품 / 입수량</th>
+          <th rowspan="2" style="vertical-align:middle;min-width:64px;">원가</th>
+          <th colspan="2" class="grp-n">정상판매가</th>
+          <th colspan="3" class="grp-a">상시할인가</th>
+          <th colspan="3" class="grp-m">최대할인가</th>
         </tr>
-        <tr></tr><tr></tr>
-      </thead>
-      <tbody id="fixed-body">`;
+        <tr>
+          <th class="grp-n">판매가</th><th class="grp-n">개당가</th>
+          <th class="grp-a">할인율</th><th class="grp-a">판매가</th><th class="grp-a">개당가</th>
+          <th class="grp-m">할인율</th><th class="grp-m">판매가</th><th class="grp-m">개당가</th>
+        </tr>
+      </thead><tbody>`;
 
-    // ── 오른쪽 스크롤 테이블 ──
-    let sHtml = `<table class="tbl">
-      <thead>
-        <tr>`;
+    // ════════════════════════════════════════════
+    // 오른쪽 스크롤: 채널별 이익률 (정상/상시/최대 3열)
+    // ════════════════════════════════════════════
+    let sHtml = `<table class="tbl"><thead>
+      <tr>`;
     channels.forEach(c=>{
-      sHtml += `<th colspan="9" class="group" style="border-right:2px solid var(--line);">${esc(c.name)} <span style="font-weight:400;font-size:11px;color:var(--muted);">${c.channel_type==='direct'?'직납':'위탁'}</span></th>`;
+      sHtml += `<th colspan="3" class="group" style="border-left:2px solid var(--line);">${esc(c.name)} <span style="font-weight:400;font-size:11px;color:var(--muted);">${c.channel_type==='direct'?'직납':'위탁'}</span></th>`;
     });
     sHtml += `</tr><tr>`;
     channels.forEach(()=>{
-      sHtml += `<th colspan="3" style="border-left:2px solid var(--line);background:#f0f7f2;font-size:11px;color:#2f7d4f;">정상판매가</th>`;
-      sHtml += `<th colspan="3" style="border-left:1px solid var(--line);background:#f0f4f9;font-size:11px;color:#1a5fa8;">상시할인가</th>`;
-      sHtml += `<th colspan="3" style="border-left:1px solid var(--line);border-right:2px solid var(--line);background:#fdf0f0;font-size:11px;color:#b4452f;">최대할인가</th>`;
+      sHtml += `<th style="border-left:2px solid var(--line);background:#f0f7f2;font-size:10.5px;color:#2f7d4f;">정상</th>`;
+      sHtml += `<th style="background:#f0f4f9;font-size:10.5px;color:#1a5fa8;">상시</th>`;
+      sHtml += `<th style="background:#fdf0f0;font-size:10.5px;color:#b4452f;">최대</th>`;
     });
-    sHtml += `</tr><tr>`;
-    channels.forEach(()=>{
-      sHtml += `<th style="border-left:2px solid var(--line);background:#f0f7f2;font-size:10.5px;">개당가</th><th style="background:#f0f7f2;font-size:10.5px;">판매가</th><th style="background:#f0f7f2;font-size:10.5px;">이익률</th>`;
-      sHtml += `<th style="border-left:1px solid var(--line);background:#f0f4f9;font-size:10.5px;">개당가</th><th style="background:#f0f4f9;font-size:10.5px;">판매가</th><th style="background:#f0f4f9;font-size:10.5px;">이익률</th>`;
-      sHtml += `<th style="border-left:1px solid var(--line);background:#fdf0f0;font-size:10.5px;">개당가</th><th style="background:#fdf0f0;font-size:10.5px;">판매가</th><th style="border-right:2px solid var(--line);background:#fdf0f0;font-size:10.5px;">이익률</th>`;
-    });
-    sHtml += `</tr></thead><tbody id="scroll-body">`;
+    sHtml += `</tr></thead><tbody>`;
 
     products.forEach(prod=>{
       const units = (unitsMap[prod.id]||[]).sort((a,b)=>a.box_qty-b.box_qty);
-      const rowspan = units.length>0 ? units.length : 1;
 
-      // 고정 테이블: 상품 헤더행
-      fHtml += `<tr class="product-header">
-        <td class="left" colspan="3" style="border-right:none;">
-          <strong>${esc(prod.code||'')} ${esc(prod.name)}</strong>
-        </td>
-      </tr>`;
-      // 스크롤 테이블: 상품 헤더행
+      // 상품 헤더행 (고정 + 스크롤)
+      fHtml += `<tr class="product-header"><td class="left" colspan="11" style="border-right:none;"><strong>${esc(prod.code||'')} ${esc(prod.name)}</strong> <span style="font-weight:400;color:var(--muted);font-size:11px;">(${esc(prod.temperature||'')})</span></td></tr>`;
       sHtml += `<tr class="product-header">`;
-      channels.forEach(()=>{ sHtml += `<td colspan="9" style="border-right:2px solid var(--line);background:#f0f7f2;"></td>`; });
+      channels.forEach(()=>{ sHtml += `<td colspan="3" style="border-left:2px solid var(--line);"></td>`; });
       sHtml += `</tr>`;
 
       if(units.length===0){
-        fHtml += `<tr class="no-data"><td class="left" style="padding-left:16px;color:var(--muted);" colspan="3">가격정책 미등록</td></tr>`;
+        fHtml += `<tr class="no-data"><td class="left" style="padding-left:16px;color:var(--muted);" colspan="11">가격정책 미등록</td></tr>`;
         sHtml += `<tr class="no-data">`;
-        channels.forEach(()=>{ sHtml += `<td colspan="9" style="border-right:2px solid var(--line);text-align:center;color:var(--muted);">-</td>`; });
+        channels.forEach(()=>{ sHtml += `<td colspan="3" style="border-left:2px solid var(--line);text-align:center;color:var(--muted);">-</td>`; });
         sHtml += `</tr>`;
-      } else {
-        units.forEach(unit=>{
-          const qty = unit.box_qty;
-          const eaNp = qty>0 ? Math.round((unit.normal_price||0)/qty) : 0;
-          const eaAp = qty>0 ? Math.round((unit.always_price||0)/qty) : 0;
-          const eaMp = qty>0 ? Math.round((unit.max_price||0)/qty) : 0;
-
-          fHtml += `<tr>
-            <td class="left" style="padding-left:16px;">${qty}개입</td>
-            <td class="center">${prod.temperature}</td>
-            <td style="border-right:none;color:var(--muted);font-size:11px;">${comma((prod.unit_cost||0)*qty)}</td>
-          </tr>`;
-
-          sHtml += `<tr>`;
-          channels.forEach(ch=>{
-            const rn = calcProfit(unit.normal_price, qty, prod, ch);
-            const ra = calcProfit(unit.always_price, qty, prod, ch);
-            const rm = calcProfit(unit.max_price, qty, prod, ch);
-            const bR = 'border-right:2px solid var(--line);';
-            sHtml += `<td style="border-left:2px solid var(--line);background:#fafdf9;">${eaNp?comma(eaNp):'-'}</td>
-                      <td style="background:#fafdf9;">${unit.normal_price?comma(unit.normal_price):'-'}</td>
-                      <td style="background:#fafdf9;">${rn?badge(rn.opRate):'-'}</td>`;
-            sHtml += `<td style="border-left:1px solid var(--line);background:#f7f9fd;">${eaAp?comma(eaAp):'-'}</td>
-                      <td style="background:#f7f9fd;">${unit.always_price?comma(unit.always_price):'-'}</td>
-                      <td style="background:#f7f9fd;">${ra?badge(ra.opRate):'-'}</td>`;
-            sHtml += `<td style="border-left:1px solid var(--line);background:#fdf9f9;">${eaMp?comma(eaMp):'-'}</td>
-                      <td style="background:#fdf9f9;">${unit.max_price?comma(unit.max_price):'-'}</td>
-                      <td style="${bR}background:#fdf9f9;">${rm?badge(rm.opRate):'-'}</td>`;
-          });
-          sHtml += `</tr>`;
-        });
+        return;
       }
+
+      units.forEach(unit=>{
+        const qty = unit.box_qty;
+        const np = unit.normal_price||0, ap = unit.always_price||0, mp = unit.max_price||0;
+        const eaNp = qty>0 ? Math.round(np/qty) : 0;
+        const eaAp = qty>0 && ap>0 ? Math.round(ap/qty) : 0;
+        const eaMp = qty>0 && mp>0 ? Math.round(mp/qty) : 0;
+        const apDisc = (np>0 && ap>0) ? ((np-ap)/np*100) : null;
+        const mpDisc = (np>0 && mp>0) ? ((np-mp)/np*100) : null;
+
+        // 고정 테이블 행: 가격 공통
+        fHtml += `<tr>
+          <td class="left" style="padding-left:16px;">${qty}개입</td>
+          <td style="color:var(--muted);font-size:11px;">${comma((prod.unit_cost||0)*qty)}</td>
+          <td class="grp-n">${np?comma(np):'-'}</td>
+          <td class="grp-n" style="color:var(--muted);">${eaNp?comma(eaNp):'-'}</td>
+          <td class="grp-a" style="color:#1a5fa8;font-size:11px;">${apDisc!=null?'↓'+apDisc.toFixed(1)+'%':'-'}</td>
+          <td class="grp-a">${ap?comma(ap):'-'}</td>
+          <td class="grp-a" style="color:var(--muted);">${eaAp?comma(eaAp):'-'}</td>
+          <td class="grp-m" style="color:#b4452f;font-size:11px;">${mpDisc!=null?'↓'+mpDisc.toFixed(1)+'%':'-'}</td>
+          <td class="grp-m">${mp?comma(mp):'-'}</td>
+          <td class="grp-m" style="color:var(--muted);">${eaMp?comma(eaMp):'-'}</td>
+        </tr>`;
+
+        // 스크롤 테이블 행: 채널별 이익률 (연결 안된 채널은 -)
+        sHtml += `<tr>`;
+        channels.forEach(ch=>{
+          const linked = isLinked(unit.id, ch.id);
+          if(!linked){
+            sHtml += `<td colspan="3" style="border-left:2px solid var(--line);text-align:center;color:#cfcfcf;">미판매</td>`;
+            return;
+          }
+          const rn = calcProfit(np, qty, prod, ch, np);
+          const ra = calcProfit(ap, qty, prod, ch, np);
+          const rm = calcProfit(mp, qty, prod, ch, np);
+          const cell = (r, kind, bg, leftBorder) => {
+            const lb = leftBorder ? 'border-left:2px solid var(--line);' : '';
+            if(!r) return `<td style="${lb}background:${bg};text-align:center;color:var(--muted);">-</td>`;
+            return `<td class="rate-cell" data-uid="${unit.id}" data-cid="${ch.id}" data-kind="${kind}" style="${lb}background:${bg};cursor:pointer;text-align:center;">${badge(r.opRate)}</td>`;
+          };
+          sHtml += cell(rn, 'np', '#fafdf9', true);
+          sHtml += cell(ra, 'ap', '#f7f9fd', false);
+          sHtml += cell(rm, 'mp', '#fdf9f9', false);
+        });
+        sHtml += `</tr>`;
+      });
     });
 
     fHtml += `</tbody></table>`;
     sHtml += `</tbody></table>`;
-
     fixedDiv.innerHTML  = fHtml;
     scrollDiv.innerHTML = sHtml;
 
-    // 행 높이 동기화: 왼쪽 행 높이를 오른쪽과 맞춤
+    // 이익률 셀 클릭 → 상세손익 모달
+    scrollDiv.querySelectorAll('.rate-cell').forEach(td=>{
+      td.addEventListener('click', ()=>{
+        const uid=+td.dataset.uid, cid=+td.dataset.cid, kind=td.dataset.kind;
+        openDetailModal(uid, cid, kind);
+      });
+    });
+
     syncRowHeights();
   }
 
@@ -429,8 +495,66 @@
     }
   }
 
+  // ── 상세손익 모달 ──
+  function openDetailModal(unitId, channelId, kind){
+    const unit = allUnits.find(u=>u.id===unitId);
+    const prod = allProducts.find(p=>p.id===unit.product_id);
+    const chan = allChannels.find(c=>c.id===channelId);
+    if(!unit||!prod||!chan) return;
+    const np = unit.normal_price||0;
+    const priceMap = { np: unit.normal_price, ap: unit.always_price, mp: unit.max_price };
+    const labelMap = { np:'정상판매가', ap:'상시할인가', mp:'최대할인가' };
+    const price = priceMap[kind]||0;
+    const r = calcProfit(price, unit.box_qty, prod, chan, np);
+    if(!r){ return; }
+
+    const sp = r.supply;
+    const pp = v => sp>0 ? pct(v/sp*100) : '-';
+    const rowHtml = (k,v,opt={})=>{
+      const b = opt.bold?'b':'';
+      const p1 = opt.p1!=null?opt.p1:'';
+      const p2 = opt.p2!=null?opt.p2:'';
+      const vs = opt.color?`style="color:${opt.color}"`:'';
+      return `<div class="md-row ${b}"><span class="mk">${k}</span><span class="mp1">${p1}</span><span class="mp2">${p2}</span><span class="mv" ${vs}>${v}</span></div>`;
+    };
+    let h = `<div class="md-head">${labelMap[kind]} ${comma(price)}원</div>`;
+    h += `<div style="font-size:12px;color:var(--muted);margin-bottom:8px;">${esc(prod.code||'')} ${esc(prod.name)} · ${unit.box_qty}개입 · ${esc(chan.name)} (${chan.channel_type==='direct'?'직납':'위탁'})</div>`;
+    if(r.isDirect){
+      const caseLabel = (r.dType==='case2')?'case2 · 할인공급가 기준':'case1 · 정상공급가 기준';
+      h += `<div class="md-dist">`;
+      h += rowHtml('판매가 (vat포함)', won(r.price), {p1:'110%'});
+      h += rowHtml('└ vat별도', won(r.vatEx), {p1:'100%'});
+      h += rowHtml('유통사이익', won(r.distProfit), {p1:pct(r.distRate)});
+      h += `</div>`;
+      h += `<div style="font-size:10px;color:var(--muted);text-align:right;margin:-2px 0 4px;">${caseLabel}</div>`;
+      h += rowHtml('= 공급가 (vat별도)', won(r.supply), {bold:true, p1:pct(100-r.distRate), p2:'100%'});
+      if(r.dType==='case1' && r.discShare>0){
+        h += `<div class="md-line"></div>`;
+        h += rowHtml('할인분담금', won(r.discShare), {p2:pp(r.discShare)});
+      }
+    } else {
+      h += rowHtml('판매가 (vat포함)', won(r.price), {p1:'110%'});
+      h += rowHtml('공급가 (vat별도)', won(r.supply), {bold:true, p1:'100%'});
+    }
+    h += `<div class="md-line"></div>`;
+    h += rowHtml('상품원가', won(r.cost), {p2:pp(r.cost)});
+    h += rowHtml('지급수수료', won(r.fee), {p2:pp(r.fee)});
+    h += rowHtml('광고선전비', won(r.ad), {p2:pp(r.ad)});
+    h += rowHtml('판매촉진비', won(r.promo), {p2:pp(r.promo)});
+    h += rowHtml('운반비', won(r.freight), {p2:pp(r.freight)});
+    h += rowHtml('본부공통비', won(r.hq), {p2:pp(r.hq)});
+    h += rowHtml('부문공통비', won(r.div), {p2:pp(r.div)});
+    h += `<div class="md-line"></div>`;
+    const col = r.opRate>=10 ? 'var(--good)' : 'var(--bad)';
+    h += rowHtml('영업이익', won(r.opProfit), {bold:true, p2:pct(r.opRate), color:col});
+
+    $('modal-body').innerHTML = h;
+    $('detail-modal').classList.add('show');
+  }
+  function closeDetailModal(){ $('detail-modal').classList.remove('show'); }
 
   function esc(s){return String(s??"").replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));}
 </script>
 </body>
 </html>
+
