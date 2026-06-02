@@ -296,18 +296,14 @@
         <input type="number" id="feeRate" value="0" />
       </div>
       <div class="fl">
-        <label>광고선전비</label>
-        <div class="combo">
-          <span class="rate-fixed-label">정률 %</span><input type="hidden" id="adType" value="rate" />
-          <input type="number" id="adValue" value="0" />
-        </div>
+        <label>광고선전비 (%)</label>
+        <input type="hidden" id="adType" value="rate" />
+        <input type="number" id="adValue" value="0" />
       </div>
       <div class="fl">
-        <label>판매촉진비</label>
-        <div class="combo">
-          <span class="rate-fixed-label">정률 %</span><input type="hidden" id="promoType" value="rate" />
-          <input type="number" id="promoValue" value="0" />
-        </div>
+        <label>판매촉진비 (%)</label>
+        <input type="hidden" id="promoType" value="rate" />
+        <input type="number" id="promoValue" value="0" />
       </div>
     </div>
 
@@ -315,18 +311,14 @@
     <div class="card indirect-card">
       <div class="card-title">🏢 간접 판관비</div>
       <div class="fl">
-        <label>본부공통비</label>
-        <div class="combo">
-          <span class="rate-fixed-label">정률 %</span><input type="hidden" id="hqType" value="rate" />
-          <input type="number" id="hqValue" value="0" />
-        </div>
+        <label>본부공통비 (%)</label>
+        <input type="hidden" id="hqType" value="rate" />
+        <input type="number" id="hqValue" value="0" />
       </div>
       <div class="fl">
-        <label>부문공통비</label>
-        <div class="combo">
-          <span class="rate-fixed-label">정률 %</span><input type="hidden" id="divType" value="rate" />
-          <input type="number" id="divValue" value="0" />
-        </div>
+        <label>부문공통비 (%)</label>
+        <input type="hidden" id="divType" value="rate" />
+        <input type="number" id="divValue" value="0" />
       </div>
     </div>
 
@@ -336,11 +328,16 @@
   <div class="right-col">
 
     <div class="card">
-      <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;">
+      <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
         <span>📋 입수량별 가격 설정
           <span style="font-size:11px;font-weight:400;color:var(--muted);margin-left:6px;">가격정책 데이터 있으면 자동 로드 · 직접 수정 가능</span>
         </span>
-        <button class="btn-load" id="btn-load" style="flex-shrink:0;">📂 시나리오 불러오기</button>
+        <div id="top-actions" style="display:flex;gap:8px;align-items:center;flex-shrink:0;">
+          <span class="flash-msg" id="flash-msg"></span>
+          <button class="btn-primary" id="btn-apply" style="display:none;">가격정책에 반영</button>
+          <button class="btn-scenario" id="btn-scenario" style="display:none;">내 시나리오 저장</button>
+          <button class="btn-load" id="btn-load">📂 시나리오 불러오기</button>
+        </div>
       </div>
       <div class="unit-table-wrap">
         <table class="unit-table">
@@ -398,11 +395,7 @@
         <div class="detail-title" id="detail-title"></div>
         <div class="detail-grid" id="detail-grid"></div>
       </div>
-      <div class="action-bar" id="action-bar" style="display:none;">
-        <button class="btn-primary" id="btn-apply" style="display:none;">가격정책에 반영</button>
-        <button class="btn-scenario" id="btn-scenario">내 시나리오 저장</button>
-        <span class="flash-msg" id="flash-msg"></span>
-      </div>
+      <div id="action-bar" style="display:none;"></div>
     </div>
 
   </div>
@@ -470,7 +463,6 @@
       me = p; canEdit = (p.role==='master'||p.role==='admin');
       $('authGate').style.display='none'; $('app').style.display='block';
       initNav(p);
-      if(canEdit) $('btn-apply').style.display='inline-block';
       await loadAllMasters();
     } else {
       $('gateMsg').textContent='승인 대기 중입니다';
@@ -694,7 +686,7 @@
   function resetUnitTable(){
     $('unit-rows').innerHTML='<tr><td colspan="9" class="placeholder">입수량 추가 버튼을 눌러 시뮬레이션을 시작하세요</td></tr>';
     $('result-body').innerHTML='<tr><td colspan="7" class="placeholder">상품과 판매처를 선택하면 손익 비교표가 나타납니다</td></tr>';
-    $('detail-panel').classList.remove('show'); $('action-bar').style.display='none';
+    $('detail-panel').classList.remove('show'); setTopActions(false);
   }
 
   // 현재 상품(+채널)에 맞는 입수량 행을 불러온다.
@@ -1008,7 +1000,7 @@
       tbody.innerHTML='<tr><td colspan="10" class="placeholder">'+(
         !currentChannel?'판매처를 선택해 주세요':'입수량을 추가해 주세요'
       )+'</td></tr>';
-      $('action-bar').style.display='none'; return;
+      setTopActions(false); return;
     }
     tbody.innerHTML='';
     rows.forEach(tr=>{
@@ -1036,7 +1028,13 @@
       });
       tbody.appendChild(rtr);
     });
-    $('action-bar').style.display='flex';
+    setTopActions(true);
+  }
+
+  // 상단 액션 버튼(가격정책 반영/시나리오 저장) 표시 제어
+  function setTopActions(show){
+    const sc=$('btn-scenario'); if(sc) sc.style.display = show ? 'inline-block' : 'none';
+    const ap=$('btn-apply'); if(ap) ap.style.display = (show && canEdit) ? 'inline-block' : 'none';
   }
 
   function badge(rate){
@@ -1339,6 +1337,7 @@
 </script>
 </body>
 </html>
+
 
 
 
