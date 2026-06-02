@@ -304,7 +304,24 @@
   function renderTableDebounced(){ clearTimeout(_debounce); _debounce=setTimeout(renderTable, 250); }
   ['filter-product','filter-channel'].forEach(id=>{ $(id) && $(id).addEventListener('input', renderTableDebounced); });
   $('filter-chtype') && $('filter-chtype').addEventListener('change', renderTable);
-  ['filter-customer','filter-make_type','filter-manage_type','filter-item_type'].forEach(id=>{ $(id) && $(id).addEventListener('change', renderTable); });
+  ['filter-customer','filter-make_type','filter-manage_type','filter-item_type'].forEach(id=>{ $(id) && $(id).addEventListener('change', ()=>{ syncAttrFilters(); renderTable(); }); });
+
+  // 필터 연동: 한 필터를 고르면 나머지는 양립하는 상품에 존재하는 값만 표시
+  function syncAttrFilters(){
+    const fields = ['customer','make_type','manage_type','item_type'];
+    const cur = {};
+    fields.forEach(f=>{ cur[f] = $('filter-'+f).value; });
+    fields.forEach(f=>{
+      const pool = allProducts.filter(p=> fields.every(g=> g===f || !cur[g] || p[g]===cur[g]));
+      const vals = [];
+      pool.forEach(p=>{ const v=p[f]; if(v && !vals.includes(v)) vals.push(v); });
+      vals.sort((a,b)=>a.localeCompare(b,'ko'));
+      const sel = $('filter-'+f);
+      const keep = cur[f];
+      sel.innerHTML = ['<option value="">전체</option>'].concat(vals.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`)).join('');
+      sel.value = vals.includes(keep) ? keep : '';
+    });
+  }
 
   // ── 손익 계산 (시뮬레이터와 동일: 직납 case1/case2) ──
   // price=이 가격대, normalP=정상가(직납 기준점), 상세값 모두 반환
@@ -615,6 +632,7 @@
 </script>
 </body>
 </html>
+
 
 
 
