@@ -45,7 +45,8 @@
     .fl select:focus,.fl input:focus{outline:none;border-color:var(--accent);}
     .fl .readonly{background:#f0f3f0;color:var(--muted);font-size:12px;}
     .g2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-    .combo{display:flex;gap:6px;}
+    .combo{display:flex;gap:6px;align-items:center;}
+    .combo input[type="number"]{flex:1;min-width:0;}
     .combo select{width:78px;flex-shrink:0;}
     .combo input{flex:1;}
 
@@ -216,8 +217,16 @@
 
     <div class="card">
       <div class="card-title">📦 상품 정보</div>
+      <div class="g2" style="margin-bottom:6px;">
+        <div class="fl"><label>고객</label><select id="pf-customer"><option value="">전체</option></select></div>
+        <div class="fl"><label>제/상품</label><select id="pf-make_type"><option value="">전체</option></select></div>
+      </div>
+      <div class="g2" style="margin-bottom:8px;">
+        <div class="fl"><label>관리유형</label><select id="pf-manage_type"><option value="">전체</option></select></div>
+        <div class="fl"><label>품목유형</label><select id="pf-item_type"><option value="">전체</option></select></div>
+      </div>
       <div class="fl">
-        <label>상품 선택</label>
+        <label>상품 선택 <span id="pf-count" style="font-size:11px;font-weight:400;color:var(--muted);"></span></label>
         <select id="sel-product">
           <option value="">-- 상품 선택 --</option>
           <option value="__new__">✏️ 신규상품 직접입력</option>
@@ -272,8 +281,13 @@
           <input type="text" id="disp-feebase" class="readonly" disabled />
         </div>
         <div class="fl">
-          <label>운반비 (자동)</label>
-          <input type="text" id="disp-freight2" class="readonly" disabled />
+          <label>운반비 <span id="freight-src" style="font-size:11px;font-weight:400;color:var(--muted);"></span></label>
+          <div class="combo">
+            <select id="freightType"><option value="rate">정률 %</option><option value="fixed">정액 원</option></select>
+            <input type="number" id="freightValue" step="any" value="0" />
+            <button type="button" id="freight-reset" title="운반비마스터 값으로 되돌리기" style="font-size:11px;padding:6px 8px;border:1px solid var(--line);border-radius:7px;background:#fafbfa;cursor:pointer;white-space:nowrap;">↺ 자동</button>
+          </div>
+          <input type="hidden" id="disp-freight2" />
         </div>
       </div>
       <div class="dist-box" id="dist-box"></div>
@@ -477,9 +491,42 @@
     const { data } = await sb.from('products').select('*').eq('is_active',true).order('code');
     if (!data) return;
     allProducts = data;
+    await loadProductOptions();   // 필터 드롭다운 채우기
+    fillProductSelect();          // 상품 드롭다운(필터 반영)
+  }
+
+  // 상품 속성 필터 드롭다운(고객/제상품/관리유형/품목유형) 채우기
+  async function loadProductOptions(){
+    let optRows = [];
+    try { const r=await sb.from('product_options').select('*').order('sort_order',{ascending:true}); optRows=r.data||[]; } catch(e){ optRows=[]; }
+    const m = { customer:[], make_type:[], manage_type:[], item_type:[] };
+    optRows.forEach(o=>{ if(m[o.field]) m[o.field].push(o.value); });
+    ['customer','make_type','manage_type','item_type'].forEach(f=>{
+      // 옵션에 없지만 상품에 쓰인 값 보강
+      allProducts.forEach(p=>{ const v=p[f]; if(v && !m[f].includes(v)) m[f].push(v); });
+      const sel = $('pf-'+f);
+      if(sel){
+        const cur = sel.value;
+        sel.innerHTML = '<option value="">전체</option>' + m[f].map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');
+        sel.value = cur;  // 선택 유지
+      }
+    });
+  }
+
+  // 필터를 반영해 상품 드롭다운 채우기
+  function fillProductSelect(){
+    const fC=$('pf-customer').value, fM=$('pf-make_type').value, fG=$('pf-manage_type').value, fI=$('pf-item_type').value;
+    const filtered = allProducts.filter(p=>{
+      if(fC && p.customer!==fC) return false;
+      if(fM && p.make_type!==fM) return false;
+      if(fG && p.manage_type!==fG) return false;
+      if(fI && p.item_type!==fI) return false;
+      return true;
+    });
     const sel = $('sel-product');
+    const cur = sel.value;
     sel.innerHTML = '<option value="">-- 상품 선택 --</option>';
-    data.forEach(p=>{
+    filtered.forEach(p=>{
       const o = document.createElement('option');
       o.value = p.id; o.textContent = `${p.code} · ${p.name}`; o.dataset.info = JSON.stringify(p);
       sel.appendChild(o);
@@ -487,7 +534,16 @@
     const newOpt = document.createElement('option');
     newOpt.value = '__new__'; newOpt.textContent = '✏️ 신규상품 직접입력';
     sel.appendChild(newOpt);
+    // 이전 선택이 필터 결과에 남아있으면 유지
+    if(cur && filtered.some(p=>String(p.id)===String(cur))) sel.value = cur;
+    const cnt = $('pf-count'); if(cnt) cnt.textContent = `(${filtered.length}개)`;
   }
+
+  // 상품 필터 변경 시 드롭다운 갱신
+  ['pf-customer','pf-make_type','pf-manage_type','pf-item_type'].forEach(id=>{
+    document.addEventListener('DOMContentLoaded',()=>{});
+    const el=$(id); if(el) el.addEventListener('change', fillProductSelect);
+  });
 
   let allChannels = [];
   let allProducts = [];
@@ -609,12 +665,10 @@
       const fm = freightMaster[temp];
       distBox.style.display='block';
       distBox.textContent=`직납 · 유통사이익율 ${fm.dDist}% · 운반비율 ${fm.dRate}% (${temp})`;
-      $('disp-freight2').value = fm.dRate+'% (직납)';
     } else {
       distBox.style.display='none';
-      const temp = currentProduct?.temperature||$('disp-temp').value||'실온';
-      $('disp-freight2').value = comma(freightMaster[temp].consign)+'원/박스';
     }
+    applyFreightFromMaster();
     await loadUnitsForCurrent();
   });
 
@@ -830,16 +884,37 @@
       const isDirect = currentChannel.channel_type==='direct';
       const fm = freightMaster[temp]||{consign:0,dRate:0,dDist:0};
       if (isDirect){
-        $('disp-freight2').value = fm.dRate+'% (직납)';
         const distBox = $('dist-box');
         distBox.style.display='block';
         distBox.textContent=`직납 · 유통사이익율 ${fm.dDist}% · 운반비율 ${fm.dRate}% (${temp})`;
-      } else {
-        $('disp-freight2').value = comma(fm.consign)+'원/박스';
       }
+      applyFreightFromMaster();
     }
     renderResultTable();
   });
+
+  // 운반비 입력칸을 운반비마스터 기본값으로 채움 (직납=정률 dRate%, 위탁=정액 consign원)
+  function applyFreightFromMaster(){
+    if(!currentChannel){ return; }
+    const temp = (currentProduct?.temperature) || $('disp-temp').value || '실온';
+    const fm = freightMaster[temp]||{consign:0,dRate:0,dDist:0};
+    const srcLabel = $('freight-src');
+    if(currentChannel.channel_type==='direct'){
+      $('freightType').value='rate';
+      $('freightValue').value = fm.dRate||0;
+      if(srcLabel) srcLabel.textContent = `(자동: 직납 ${fm.dRate||0}%)`;
+    } else {
+      $('freightType').value='fixed';
+      $('freightValue').value = fm.consign||0;
+      if(srcLabel) srcLabel.textContent = `(자동: 위탁 ${comma(fm.consign||0)}원/박스)`;
+    }
+  }
+
+  // 운반비 수동 변경 시 결과 재계산
+  $('freightType') && $('freightType').addEventListener('change', ()=>{ markFreightManual(); renderResultTable(); });
+  $('freightValue') && $('freightValue').addEventListener('input', ()=>{ markFreightManual(); renderResultTable(); });
+  $('freight-reset') && $('freight-reset').addEventListener('click', ()=>{ applyFreightFromMaster(); renderResultTable(); });
+  function markFreightManual(){ const s=$('freight-src'); if(s) s.textContent='(수동 입력)'; }
 
   function getUnitRows(){
     return Array.from($('unit-rows').querySelectorAll('tr')).filter(tr=>tr.querySelector('.qty'));
@@ -876,7 +951,7 @@
       const feeAmt  = supply*(feeRate/100);
       const adAmt   = $('adType').value==='fixed' ? adVal : supply*(adVal/100);
       const promoAmt= $('promoType').value==='fixed' ? promoVal : supply*(promoVal/100);
-      const freight = supply*(fm.dRate/100);
+      const freight = ($('freightType').value==='fixed') ? numV('freightValue') : supply*(numV('freightValue')/100);
       const hqAmt   = $('hqType').value==='fixed' ? hqVal : supply*(hqVal/100);
       const divAmt  = $('divType').value==='fixed' ? divVal : supply*(divVal/100);
 
@@ -897,7 +972,7 @@
       const fee    = feeBase * (numV('feeRate')/100);
       const ad     = $('adType').value==='fixed' ? adVal : supply*(adVal/100);
       const promo  = $('promoType').value==='fixed' ? promoVal : supply*(promoVal/100);
-      const freight= fm.consign;
+      const freight= ($('freightType').value==='fixed') ? numV('freightValue') : supply*(numV('freightValue')/100);
       const hq     = $('hqType').value==='fixed' ? hqVal : supply*(hqVal/100);
       const div    = $('divType').value==='fixed' ? divVal : supply*(divVal/100);
       const opProfit = supply-cost-fee-ad-promo-freight-hq-div;
@@ -1218,12 +1293,10 @@
       const temp = currentProduct?.temperature||$('disp-temp').value||'실온';
       const fm = freightMaster[temp]||{consign:0,dRate:0,dDist:0};
       const distBox=$('dist-box'); if(distBox){ distBox.style.display='block'; distBox.textContent=`직납 · 유통사이익율 ${fm.dDist}% · 운반비율 ${fm.dRate}% (${temp})`; }
-      $('disp-freight2').value = fm.dRate+'% (직납)';
     } else {
       const distBox=$('dist-box'); if(distBox) distBox.style.display='none';
-      const temp = currentProduct?.temperature||$('disp-temp').value||'실온';
-      $('disp-freight2').value = comma((freightMaster[temp]||{}).consign||0)+'원/박스';
     }
+    applyFreightFromMaster();
 
     // 4. 입수량 행 복원 (시나리오에 저장된 값 그대로 — 자동로딩을 거치지 않음)
     $('unit-rows').innerHTML = '';
@@ -1247,6 +1320,7 @@
 </script>
 </body>
 </html>
+
 
 
 
