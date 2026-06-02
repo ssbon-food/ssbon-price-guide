@@ -1099,8 +1099,22 @@
     if (rows.length===0){ alert('입수량을 추가해 주세요.'); return; }
     const title = prompt('시나리오 이름', `${currentProduct.name} × ${currentChannel.name}`);
     if (!title) return;
+    const trimTitle = title.trim();
+    if (!trimTitle) return;
+
+    // 같은 이름의 내 시나리오가 이미 있으면 덮어쓸지 확인
+    const { data:dup } = await sb.from('scenarios')
+      .select('id').eq('user_id', me.id).eq('title', trimTitle);
+    if (dup && dup.length>0){
+      if (!confirm(`'${trimTitle}' 이름의 시나리오가 이미 있어요.\n덮어쓸까요?`)) return;
+      // 기존 같은 이름 행 모두 삭제 후 새로 저장 = 덮어쓰기
+      const { error:delErr } = await sb.from('scenarios')
+        .delete().eq('user_id', me.id).eq('title', trimTitle);
+      if (delErr){ alert('덮어쓰기 준비 실패: '+delErr.message); return; }
+    }
+
     const insData = rows.map(tr=>({
-      user_id: me.id, title,
+      user_id: me.id, title: trimTitle,
       product_id: currentProduct.id, channel_id: currentChannel.id,
       box_qty: parseInt(numC(tr.querySelector('.qty').value))||1,
       normal_price: numC(tr.querySelector('.np').value)||0,
@@ -1110,7 +1124,7 @@
     }));
     const { error } = await sb.from('scenarios').insert(insData);
     if (error){ alert('저장 실패: '+error.message); return; }
-    flash('✓ 시나리오 저장됐어요');
+    flash(dup && dup.length>0 ? '✓ 시나리오 덮어쓰기 완료' : '✓ 시나리오 저장됐어요');
   });
 
 
@@ -1169,27 +1183,53 @@
     if (!prod){ alert('이 시나리오의 상품이 삭제되어 불러올 수 없어요.'); return; }
     if (!chan){ alert('이 시나리오의 판매처가 삭제되어 불러올 수 없어요.'); return; }
 
-    // 1. 상품 선택
+    // 1. 상품 선택 (핸들러를 직접 흉내내어 동기적으로 상태 세팅)
     $('sel-product').value = prod.id;
-    $('sel-product').dispatchEvent(new Event('change'));
+    $('new-product-section').style.display = 'none';
+    currentProduct = prod;
+    $('disp-temp').value        = prod.temperature||'실온';
+    $('inp-unit-cost').value    = prod.unit_cost||0;
+    $('inp-normal-price').value = prod.normal_price||0;
+    $('product-info').style.display='block';
+    $('product-info').textContent=`${prod.code} · 단량 ${comma(prod.unit_weight)}g`;
 
-    // 2. 채널유형 → 판매처 선택
+    // 2. 채널유형 드롭다운 갱신 → 판매처 목록 채우기 (핸들러 직접 호출)
     $('sel-chtype').value = chan.channel_type;
     $('sel-chtype').dispatchEvent(new Event('change'));
-    // 필터링된 드롭다운이 채워진 뒤 채널 선택
-    setTimeout(()=>{
-      $('sel-channel').value = chan.id;
-      $('sel-channel').dispatchEvent(new Event('change'));
 
-      // 3. 입수량 행 복원 (기존 행 비우고 시나리오 행 추가)
-      $('unit-rows').innerHTML = '';
-      group.rows.sort((a,b)=>a.box_qty-b.box_qty).forEach(r=>{
-        addUnitRow({ box_qty:r.box_qty, normal_price:r.normal_price, always_price:r.always_price, max_price:r.max_price });
-      });
-      renderResultTable();
-      $('sc-modal-bg').classList.remove('show');
-      flash('✓ 시나리오를 불러왔어요');
-    }, 150);
+    // 3. 판매처 선택 + 비용항목 세팅 (채널 change 핸들러를 await로 완료까지 대기)
+    $('sel-channel').value = chan.id;
+    const chOpt = Array.from($('sel-channel').options).find(o=>String(o.value)===String(chan.id));
+    if (chOpt && chOpt.dataset.info){ currentChannel = JSON.parse(chOpt.dataset.info); }
+    else { currentChannel = chan; }
+    // 비용 입력칸 채우기
+    $('feeRate').value    = currentChannel.commission_rate||0;
+    $('adType').value     = currentChannel.ad_type||'rate';  $('adValue').value  = currentChannel.ad_value||0;
+    $('promoType').value  = currentChannel.promotion_type||'rate'; $('promoValue').value = currentChannel.promotion_value||0;
+    $('hqType').value     = currentChannel.hq_type||'rate';  $('hqValue').value  = currentChannel.hq_value||0;
+    $('divType').value    = currentChannel.div_type||'rate'; $('divValue').value = currentChannel.div_value||0;
+    $('disp-feebase').value = currentChannel.commission_base==='vat'?'VAT포함가':'공급가';
+    // 직납/위탁 운반비 표시
+    if (currentChannel.channel_type==='direct'){
+      await loadDirectFreight(currentChannel.id);
+      const temp = currentProduct?.temperature||$('disp-temp').value||'실온';
+      const fm = freightMaster[temp]||{consign:0,dRate:0,dDist:0};
+      const distBox=$('dist-box'); if(distBox){ distBox.style.display='block'; distBox.textContent=`직납 · 유통사이익율 ${fm.dDist}% · 운반비율 ${fm.dRate}% (${temp})`; }
+      $('disp-freight2').value = fm.dRate+'% (직납)';
+    } else {
+      const distBox=$('dist-box'); if(distBox) distBox.style.display='none';
+      const temp = currentProduct?.temperature||$('disp-temp').value||'실온';
+      $('disp-freight2').value = comma((freightMaster[temp]||{}).consign||0)+'원/박스';
+    }
+
+    // 4. 입수량 행 복원 (시나리오에 저장된 값 그대로 — 자동로딩을 거치지 않음)
+    $('unit-rows').innerHTML = '';
+    group.rows.sort((a,b)=>a.box_qty-b.box_qty).forEach(r=>{
+      addUnitRow({ box_qty:r.box_qty, normal_price:r.normal_price, always_price:r.always_price, max_price:r.max_price });
+    });
+    renderResultTable();
+    $('sc-modal-bg').classList.remove('show');
+    flash('✓ 시나리오를 불러왔어요');
   }
 
   async function deleteScenario(group){
@@ -1203,6 +1243,7 @@
 </script>
 </body>
 </html>
+
 
 
 
