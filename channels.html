@@ -154,6 +154,7 @@
       <label class="chk"><input type="checkbox" id="show-inactive" /> 비활성 포함</label>
       <button class="btn-ghost" id="btn-bulk-activate" style="display:none;color:var(--accent);">✓ 선택 활성</button>
       <button class="btn-ghost" id="btn-bulk-deactivate" style="display:none;">⊘ 선택 비활성</button>
+      <button class="btn-ghost" id="btn-bulk" style="display:none;">📋 일괄등록</button>
       <button class="btn-primary" id="btn-new" style="display:none;">+ 새 채널</button>
     </div>
     <div class="card">
@@ -180,6 +181,37 @@
 </div>
 
 <!-- 모달 -->
+<!-- 일괄등록 모달 -->
+<div class="overlay" id="bulk-overlay">
+  <div class="modal" style="max-width:760px;">
+    <div class="modal-head">📋 채널 일괄등록</div>
+    <div style="padding:22px 24px;display:flex;flex-direction:column;gap:14px;">
+      <div style="font-size:13px;color:var(--muted);line-height:1.7;">
+        엑셀에서 복사해 붙여넣거나 CSV 파일을 올리세요.<br>
+        <b>컬럼 순서:</b> 채널명, 유형, 지급수수료, 광고선전비, 판매촉진비, 본부공통비, 부문공통비, 기타고정비, 할인분담금방식<br>
+        · <b>유형</b>은 <b>위탁</b> 또는 <b>직납</b> · 수수료·판관비는 % 숫자만 · 기타고정비는 원 단위<br>
+        · <b>할인분담금방식</b>은 <b>case1</b> 또는 <b>case2</b> (비우면 case1) · 직납 품온별 값은 등록 후 개별 수정<br>
+        · 첫 줄이 머리글이면 자동으로 건너뜁니다.
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <label class="btn-ghost btn-sm" style="cursor:pointer;">📁 CSV 파일 선택 <input type="file" id="bulk-file" accept=".csv,text/csv,text/plain" style="display:none;" /></label>
+        <button class="btn-ghost btn-sm" id="bulk-sample">예시 채우기</button>
+        <span id="bulk-filename" style="font-size:12px;color:var(--muted);"></span>
+      </div>
+      <textarea id="bulk-text" placeholder="11번가,위탁,15,3,1.8,5,2.8,0,&#10;컬리,직납,40,0.5,1.8,5,2.8,0,case1" style="width:100%;min-height:130px;font-family:monospace;font-size:13px;padding:12px;border:1px solid var(--line);border-radius:10px;resize:vertical;"></textarea>
+      <button class="btn-ghost btn-sm" id="bulk-preview-btn" style="align-self:flex-start;">미리보기 / 검증</button>
+      <div id="bulk-preview" style="font-size:13px;"></div>
+    </div>
+    <div class="modal-foot">
+      <span id="bulk-summary" style="font-size:13px;color:var(--muted);"></span>
+      <div style="display:flex;gap:10px;">
+        <button class="btn-ghost" id="bulk-cancel">취소</button>
+        <button class="btn-primary" id="bulk-save" disabled>등록</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="overlay" id="overlay">
   <div class="modal">
     <div class="modal-head" id="modal-title">새 채널</div>
@@ -328,6 +360,7 @@
     $("gate").style.display="none"; $("app").style.display="block";
       initNav(me);
     $("btn-new").style.display=canEdit?"inline-block":"none";
+    $("btn-bulk").style.display=canEdit?"inline-block":"none";
   }
   function goLogin(){location.href="index.html";}
   async function logout(){await sb.auth.signOut();goLogin();}
@@ -486,6 +519,106 @@
     renderTable();
   });
 
+  // ════════ 채널 일괄등록 ════════
+  function splitLine(line){
+    if(line.includes("\t")) return line.split("\t").map(s=>s.trim().replace(/^"|"$/g,""));
+    const out=[]; let cur=""; let inQ=false;
+    for(let i=0;i<line.length;i++){
+      const ch=line[i];
+      if(ch==='"'){ if(inQ && line[i+1]==='"'){ cur+='"'; i++; } else { inQ=!inQ; } }
+      else if(ch===',' && !inQ){ out.push(cur); cur=""; }
+      else cur+=ch;
+    }
+    out.push(cur);
+    return out.map(s=>s.trim());
+  }
+  const numC=(v)=>Number(String(v).replace(/[^\d.-]/g,""))||0;
+  let bulkParsed=[];
+
+  $("btn-bulk") && $("btn-bulk").addEventListener("click",()=>{
+    $("bulk-text").value=""; $("bulk-preview").innerHTML=""; $("bulk-summary").textContent="";
+    $("bulk-filename").textContent=""; $("bulk-save").disabled=true; bulkParsed=[];
+    $("bulk-overlay").classList.add("show");
+  });
+  $("bulk-cancel") && $("bulk-cancel").addEventListener("click",()=>$("bulk-overlay").classList.remove("show"));
+  $("bulk-sample") && $("bulk-sample").addEventListener("click",()=>{
+    $("bulk-text").value="채널명,유형,지급수수료,광고선전비,판매촉진비,본부공통비,부문공통비,기타고정비,할인분담금방식\n11번가,위탁,15,3,1.8,5,2.8,0,\n컬리,직납,40,0.5,1.8,5,2.8,0,case1";
+  });
+  $("bulk-file") && $("bulk-file").addEventListener("change",(e)=>{
+    const file=e.target.files[0]; if(!file) return;
+    $("bulk-filename").textContent=file.name;
+    const r=new FileReader(); r.onload=ev=>{ $("bulk-text").value=ev.target.result; }; r.readAsText(file,"UTF-8");
+  });
+
+  $("bulk-preview-btn") && $("bulk-preview-btn").addEventListener("click",()=>{
+    const raw=$("bulk-text").value.trim();
+    if(!raw){ $("bulk-preview").innerHTML='<span style="color:#c0633a;">붙여넣은 내용이 없어요.</span>'; return; }
+    let lines=raw.split(/\r?\n/).map(l=>l.trim()).filter(l=>l);
+    if(lines.length>0){
+      const f=splitLine(lines[0]).map(s=>s.trim());
+      if(f[0] && /[가-힣A-Za-z]/.test(f[0]) && (f.includes("채널명")||f[0]==="채널명")) lines=lines.slice(1);
+    }
+    const existing=new Set(channels.map(c=>c.name));
+    const seen=new Set();
+    const ok=[],errs=[];
+    lines.forEach((line,i)=>{
+      const cols=splitLine(line);
+      const [name,typeRaw,fee,ad,promo,hq,div,other,disc]=cols;
+      const rowNo=i+1; const problems=[];
+      if(cols.length<8) problems.push("컬럼이 8개 미만");
+      if(!name) problems.push("채널명 없음");
+      let ctype="";
+      if(typeRaw==="위탁"||typeRaw==="위탁채널"||typeRaw==="consign") ctype="consign";
+      else if(typeRaw==="직납"||typeRaw==="직납채널"||typeRaw==="direct") ctype="direct";
+      else problems.push(`유형 '${typeRaw||""}' 잘못됨(위탁/직납)`);
+      let dtype = (disc||"").trim();
+      if(!dtype) dtype="case1";
+      if(dtype!=="case1"&&dtype!=="case2") problems.push(`할인분담금 '${disc}' 잘못됨(case1/case2)`);
+      if(name && existing.has(name)) problems.push("이미 등록된 채널명");
+      if(name && seen.has(name)) problems.push("입력 내 중복");
+      if(name) seen.add(name);
+      if(problems.length>0){ errs.push({rowNo,line,problems}); }
+      else {
+        ok.push({
+          name, channel_type:ctype, commission_rate:numC(fee), commission_base:"supply",
+          ad_type:"rate", ad_value:numC(ad), promotion_type:"rate", promotion_value:numC(promo),
+          hq_type:"rate", hq_value:numC(hq), div_type:"rate", div_value:numC(div),
+          other_fixed:numC(other), discount_type:dtype,
+        });
+      }
+    });
+    bulkParsed=ok;
+    let html="";
+    if(ok.length>0){
+      html+=`<div style="margin:6px 0 4px;font-weight:600;color:var(--accent);">✓ 등록 가능 ${ok.length}건</div>`;
+      html+='<div style="max-height:200px;overflow:auto;border:1px solid var(--line);border-radius:8px;"><table style="width:100%;font-size:12px;border-collapse:collapse;">';
+      html+='<thead><tr style="background:#fafbfa;"><th style="padding:5px 8px;text-align:left;">채널명</th><th style="padding:5px 8px;">유형</th><th style="padding:5px 8px;text-align:right;">수수료</th><th style="padding:5px 8px;text-align:right;">광고</th><th style="padding:5px 8px;text-align:right;">판촉</th><th style="padding:5px 8px;text-align:right;">본부</th><th style="padding:5px 8px;text-align:right;">부문</th><th style="padding:5px 8px;text-align:right;">기타</th><th style="padding:5px 8px;">분담</th></tr></thead><tbody>';
+      ok.forEach(c=>{ html+=`<tr style="border-top:1px solid var(--line);"><td style="padding:5px 8px;">${esc(c.name)}</td><td style="padding:5px 8px;text-align:center;">${c.channel_type==="consign"?"위탁":"직납"}</td><td style="padding:5px 8px;text-align:right;">${c.commission_rate}%</td><td style="padding:5px 8px;text-align:right;">${c.ad_value}%</td><td style="padding:5px 8px;text-align:right;">${c.promotion_value}%</td><td style="padding:5px 8px;text-align:right;">${c.hq_value}%</td><td style="padding:5px 8px;text-align:right;">${c.div_value}%</td><td style="padding:5px 8px;text-align:right;">${c.other_fixed.toLocaleString()}</td><td style="padding:5px 8px;text-align:center;">${c.discount_type}</td></tr>`; });
+      html+='</tbody></table></div>';
+    }
+    if(errs.length>0){
+      html+=`<div style="margin:10px 0 4px;font-weight:600;color:#c0633a;">✕ 오류 ${errs.length}건 (제외)</div><div style="max-height:120px;overflow:auto;font-size:12px;color:#c0633a;line-height:1.7;">`;
+      errs.forEach(e=>{ html+=`${e.rowNo}행: ${e.problems.join(", ")}<br>`; });
+      html+='</div>';
+    }
+    $("bulk-preview").innerHTML=html;
+    $("bulk-summary").textContent=`등록 가능 ${ok.length}건 / 오류 ${errs.length}건`;
+    $("bulk-save").disabled=(ok.length===0);
+  });
+
+  $("bulk-save") && $("bulk-save").addEventListener("click",async()=>{
+    if(bulkParsed.length===0) return;
+    if(!confirm(`${bulkParsed.length}개 채널을 등록할까요?`)) return;
+    $("bulk-save").disabled=true;
+    const now=new Date().toISOString();
+    const payload=bulkParsed.map(c=>({...c,is_active:true,is_representative:false,created_by:me.id,updated_by:me.id,updated_at:now}));
+    const { error }=await sb.from("channels").insert(payload);
+    if(error){ alert("등록 실패: "+error.message); $("bulk-save").disabled=false; return; }
+    $("bulk-overlay").classList.remove("show");
+    await loadChannels();
+    alert(`✓ ${bulkParsed.length}개 채널 등록 완료${bulkParsed.some(c=>c.channel_type==="direct")?"\n\n직납 채널의 품온별 유통사이익율·운반비율은 [수정]에서 입력해 주세요.":""}`);
+  });
+
   function esc(s){return String(s??"").replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));}
 
   async function openModal(c){
@@ -588,6 +721,7 @@
 </script>
 </body>
 </html>
+
 
 
 
