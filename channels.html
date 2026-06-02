@@ -194,6 +194,13 @@
           <option value="vat">VAT포함가 기준</option>
         </select>
       </div>
+      <div class="field" id="field-disctype" style="display:none;">
+        <label>할인분담금 방식 <span style="font-size:11px;font-weight:400;color:var(--muted);">(직납만)</span></label>
+        <select id="f-disctype">
+          <option value="case1">case1 · 정상공급가 기준 + 분담금 사후정산</option>
+          <option value="case2">case2 · 할인공급가 기준으로 공급가 조정</option>
+        </select>
+      </div>
       <div class="field">
         <label>지급수수료 (%)</label>
         <input id="f-fee" class="num" type="number" step="any" placeholder="0" />
@@ -296,6 +303,7 @@
 
   $("f-chtype").addEventListener("change", function(){
     $("direct-section").classList.toggle("show", this.value==="direct");
+    $("field-disctype").style.display = (this.value==="direct") ? "flex" : "none";
   });
 
   async function init(){
@@ -423,6 +431,8 @@
     $("f-divValue").value=c?(c.div_value??""):"";
     const isDirect=(c?.channel_type==="direct");
     $("direct-section").classList.toggle("show", isDirect);
+    $("field-disctype").style.display = isDirect ? "flex" : "none";
+    $("f-disctype").value = c?(c.discount_type||"case1"):"case1";
     if (isDirect && c?.id){
       const { data } = await sb.from("channel_logistics").select("*").eq("channel_id",c.id);
       TEMPS.forEach(t=>{ $("d-fr-"+t.id).value=0; $("d-dr-"+t.id).value=0; });
@@ -445,7 +455,7 @@
       promotion_type:$("f-promoType").value,promotion_value:numVal("f-promoValue"),
       hq_type:$("f-hqType").value,hq_value:numVal("f-hqValue"),
       div_type:$("f-divType").value,div_value:numVal("f-divValue"),
-      other_fixed:numVal("f-other"),updated_by:me.id,updated_at:new Date().toISOString(),
+      other_fixed:numVal("f-other"),discount_type:$("f-disctype").value,updated_by:me.id,updated_at:new Date().toISOString(),
     };
     if(!payload.name){alert("채널명은 꼭 입력해야 해요.");return;}
     let channelId=editingId, error;
@@ -508,3 +518,4 @@
 </script>
 </body>
 </html>
+
