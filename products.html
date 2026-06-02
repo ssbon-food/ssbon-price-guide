@@ -139,6 +139,7 @@
     <div class="toolbar">
       <input class="search" id="search" placeholder="ERP코드 또는 상품명으로 검색…" />
       <label class="chk"><input type="checkbox" id="show-inactive" /> 비활성 포함</label>
+      <button class="btn-ghost" id="btn-bulk" style="display:none;">📋 일괄등록</button>
       <button class="btn-primary" id="btn-new" style="display:none;">+ 새 상품</button>
     </div>
     <div class="card">
@@ -160,6 +161,37 @@
       <div class="empty" id="empty" style="display:none;">등록된 상품이 없어요.</div>
     </div>
   </main>
+</div>
+
+<!-- 일괄등록 모달 -->
+<div class="overlay" id="bulk-overlay">
+  <div class="modal" style="max-width:720px;">
+    <div class="modal-head">📋 상품 일괄등록</div>
+    <div class="modal-body" style="grid-template-columns:1fr;gap:14px;">
+      <div style="font-size:13px;color:var(--muted);line-height:1.6;">
+        엑셀/스프레드시트에서 복사해 붙여넣거나, CSV 파일을 올리세요.<br>
+        <b>컬럼 순서:</b> ERP코드, 상품명, 품온, 단량(g), EA원가, EA정상가<br>
+        품온은 <b>실온 / 냉장 / 냉동</b> 중 하나. 첫 줄이 머리글(예: "ERP코드")이면 자동으로 건너뜁니다.
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <label class="btn-ghost btn-sm" style="cursor:pointer;">
+          📁 CSV 파일 선택 <input type="file" id="bulk-file" accept=".csv,text/csv,text/plain" style="display:none;" />
+        </label>
+        <button class="btn-ghost btn-sm" id="bulk-sample">예시 채우기</button>
+        <span id="bulk-filename" style="font-size:12px;color:var(--muted);"></span>
+      </div>
+      <textarea id="bulk-text" placeholder="A001,순수본 전복죽,냉장,500,3200,5900&#10;A002,배도라지청,실온,1500,5775,19500" style="width:100%;min-height:140px;font-family:monospace;font-size:13px;padding:12px;border:1px solid var(--line);border-radius:10px;resize:vertical;"></textarea>
+      <button class="btn-ghost btn-sm" id="bulk-preview-btn" style="justify-self:start;">미리보기 / 검증</button>
+      <div id="bulk-preview" style="font-size:13px;"></div>
+    </div>
+    <div class="modal-foot">
+      <span id="bulk-summary" style="font-size:13px;color:var(--muted);"></span>
+      <div class="modal-foot-right">
+        <button class="btn-ghost" id="bulk-cancel">취소</button>
+        <button class="btn-primary" id="bulk-save" disabled>등록</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- 수정 모달 -->
@@ -268,6 +300,7 @@
     $("gate").style.display="none"; $("app").style.display="block";
       initNav(me);
     $("btn-new").style.display=canEdit?"inline-block":"none";
+    $("btn-bulk").style.display=canEdit?"inline-block":"none";
   }
   function goLogin(){location.href="index.html";}
   async function logout(){await sb.auth.signOut();goLogin();}
@@ -315,6 +348,123 @@
       tbody.appendChild(tr);
     });
   }
+
+  // ════════════════════════════════════════════
+  //  상품 일괄등록
+  // ════════════════════════════════════════════
+  const VALID_TEMPS = ["실온","냉장","냉동"];
+  let bulkParsed = [];  // 검증 통과한 등록 대상
+
+  $("btn-bulk") && $("btn-bulk").addEventListener("click", ()=>{
+    $("bulk-text").value=""; $("bulk-preview").innerHTML=""; $("bulk-summary").textContent="";
+    $("bulk-filename").textContent=""; $("bulk-save").disabled=true; bulkParsed=[];
+    $("bulk-overlay").classList.add("show");
+  });
+  $("bulk-cancel") && $("bulk-cancel").addEventListener("click", ()=>$("bulk-overlay").classList.remove("show"));
+
+  // 예시 채우기
+  $("bulk-sample") && $("bulk-sample").addEventListener("click", ()=>{
+    $("bulk-text").value = "ERP코드,상품명,품온,단량(g),EA원가,EA정상가\nA001,순수본 전복죽,냉장,500,3200,5900\nA002,배도라지청,실온,1500,5775,19500";
+  });
+
+  // CSV 파일 읽기
+  $("bulk-file") && $("bulk-file").addEventListener("change", (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    $("bulk-filename").textContent = file.name;
+    const reader = new FileReader();
+    reader.onload = ev => { $("bulk-text").value = ev.target.result; };
+    reader.readAsText(file, "UTF-8");
+  });
+
+  // 한 줄을 분리 (탭 구분이면 탭, 아니면 따옴표를 인식하는 CSV 파서)
+  function splitLine(line){
+    if(line.includes("\t")) return line.split("\t").map(s=>s.trim().replace(/^"|"$/g,""));
+    // 따옴표 안의 쉼표는 구분자로 보지 않음 (예: "1,500")
+    const out=[]; let cur=""; let inQ=false;
+    for(let i=0;i<line.length;i++){
+      const ch=line[i];
+      if(ch==='"'){ if(inQ && line[i+1]==='"'){ cur+='"'; i++; } else { inQ=!inQ; } }
+      else if(ch===',' && !inQ){ out.push(cur); cur=""; }
+      else cur+=ch;
+    }
+    out.push(cur);
+    return out.map(s=>s.trim());
+  }
+
+  // 미리보기 / 검증
+  $("bulk-preview-btn") && $("bulk-preview-btn").addEventListener("click", ()=>{
+    const raw = $("bulk-text").value.trim();
+    if(!raw){ $("bulk-preview").innerHTML='<span style="color:var(--warn);">붙여넣은 내용이 없어요.</span>'; return; }
+    let lines = raw.split(/\r?\n/).map(l=>l.trim()).filter(l=>l.length>0);
+    // 첫 줄이 머리글이면 건너뛰기 (숫자가 아닌 헤더 추정)
+    if(lines.length>0){
+      const first = splitLine(lines[0]).map(s=>s.trim());
+      if(first[0] && /[A-Za-z가-힣]/.test(first[0]) && (first.includes("ERP코드")||first.includes("상품명")||first[0]==="ERP코드")){
+        lines = lines.slice(1);
+      }
+    }
+    const existingCodes = new Set(products.map(p=>p.code));
+    const seenCodes = new Set();
+    const ok=[], errs=[];
+    lines.forEach((line, i)=>{
+      const cols = splitLine(line).map(s=>s.trim());
+      const [code,name,temp,weight,cost,normal] = cols;
+      const rowNo = i+1;
+      const problems = [];
+      if(cols.length < 6) problems.push("컬럼이 6개 미만");
+      if(!code) problems.push("ERP코드 없음");
+      if(!name) problems.push("상품명 없음");
+      if(!VALID_TEMPS.includes(temp)) problems.push(`품온 '${temp||""}' 잘못됨`);
+      if(code && existingCodes.has(code)) problems.push("이미 등록된 코드");
+      if(code && seenCodes.has(code)) problems.push("입력 내 중복 코드");
+      if(code) seenCodes.add(code);
+      if(problems.length>0){
+        errs.push({rowNo, line, problems});
+      } else {
+        ok.push({
+          code, name, temperature:temp,
+          unit_weight: unComma(weight), unit_cost: unComma(cost), normal_price: unComma(normal),
+        });
+      }
+    });
+    bulkParsed = ok;
+
+    // 미리보기 표
+    let html = "";
+    if(ok.length>0){
+      html += `<div style="margin:6px 0 4px;font-weight:600;color:var(--accent);">✓ 등록 가능 ${ok.length}건</div>`;
+      html += '<div style="max-height:180px;overflow:auto;border:1px solid var(--line);border-radius:8px;"><table style="width:100%;font-size:12px;border-collapse:collapse;">';
+      html += '<thead><tr style="background:#fafbfa;"><th style="padding:5px 8px;text-align:left;">ERP</th><th style="padding:5px 8px;text-align:left;">상품명</th><th style="padding:5px 8px;">품온</th><th style="padding:5px 8px;text-align:right;">단량</th><th style="padding:5px 8px;text-align:right;">원가</th><th style="padding:5px 8px;text-align:right;">정상가</th></tr></thead><tbody>';
+      ok.forEach(p=>{
+        html += `<tr style="border-top:1px solid var(--line);"><td style="padding:5px 8px;">${esc(p.code)}</td><td style="padding:5px 8px;">${esc(p.name)}</td><td style="padding:5px 8px;text-align:center;">${esc(p.temperature)}</td><td style="padding:5px 8px;text-align:right;">${p.unit_weight.toLocaleString()}</td><td style="padding:5px 8px;text-align:right;">${p.unit_cost.toLocaleString()}</td><td style="padding:5px 8px;text-align:right;">${p.normal_price.toLocaleString()}</td></tr>`;
+      });
+      html += '</tbody></table></div>';
+    }
+    if(errs.length>0){
+      html += `<div style="margin:10px 0 4px;font-weight:600;color:var(--warn);">✕ 오류 ${errs.length}건 (등록 제외)</div>`;
+      html += '<div style="max-height:140px;overflow:auto;font-size:12px;color:var(--warn);line-height:1.7;">';
+      errs.forEach(e=>{ html += `${e.rowNo}행: ${e.problems.join(", ")} <span style="color:var(--muted);">— ${esc(e.line.slice(0,40))}</span><br>`; });
+      html += '</div>';
+    }
+    $("bulk-preview").innerHTML = html;
+    $("bulk-summary").textContent = `등록 가능 ${ok.length}건 / 오류 ${errs.length}건`;
+    $("bulk-save").disabled = (ok.length===0);
+  });
+
+  // 등록 실행
+  $("bulk-save") && $("bulk-save").addEventListener("click", async ()=>{
+    if(bulkParsed.length===0) return;
+    if(!confirm(`${bulkParsed.length}건의 상품을 등록할까요?`)) return;
+    $("bulk-save").disabled = true;
+    const now = new Date().toISOString();
+    const payload = bulkParsed.map(p=>({ ...p, is_active:true, created_by:me.id, updated_by:me.id, updated_at:now }));
+    const { error } = await sb.from("products").insert(payload);
+    if(error){ alert("등록 실패: "+error.message); $("bulk-save").disabled=false; return; }
+    $("bulk-overlay").classList.remove("show");
+    await loadProducts();
+    alert(`✓ ${bulkParsed.length}건 등록 완료`);
+  });
 
   function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 
@@ -413,3 +563,4 @@
 </script>
 </body>
 </html>
+
