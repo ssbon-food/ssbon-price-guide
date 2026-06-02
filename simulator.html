@@ -62,9 +62,10 @@
     table.unit-table th{padding:8px 6px;font-size:11px;color:var(--muted);font-weight:600;border-bottom:1px solid var(--line);background:#fafbfa;text-align:center;white-space:nowrap;}
     table.unit-table th.tl{text-align:left;}
     table.unit-table td{padding:4px 4px;border-bottom:1px solid var(--line);text-align:center;vertical-align:middle;height:52px;}
+    table.unit-table input{margin:0 auto;}
     table.unit-table td.tl{text-align:left;}
     table.unit-table tr:last-child td{border-bottom:none;}
-    table.unit-table input[type="number"]{width:100%;font-family:inherit;font-size:12px;padding:5px 6px;border:1px solid var(--line);border-radius:7px;background:#fafbfa;text-align:right;}
+    table.unit-table input{width:100%;max-width:100px;font-family:inherit;font-size:12px;padding:5px 6px;border:1px solid var(--line);border-radius:7px;background:#fafbfa;text-align:right;}
     table.unit-table input:focus{outline:none;border-color:var(--accent);background:#fff;}
     table.unit-table input.readonly{background:#f0f3f0;color:var(--muted);}
     .disc-label{font-size:10px;color:var(--muted);text-align:center;display:block;line-height:1;margin-top:1px;height:13px;}
@@ -95,7 +96,18 @@
     .detail{display:none;background:#f8faf8;border-top:1px solid var(--line);padding:14px 16px;}
     .detail.show{display:block;}
     .detail-title{font-size:12px;font-weight:700;margin-bottom:10px;color:var(--ink);}
-    .detail-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+    .detail-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+    .dcol-pct{font-size:11px;color:var(--muted);min-width:42px;text-align:right;}
+    .dr .pct{font-size:11px;color:var(--muted);margin-right:4px;}
+    .dcol-section{font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin:6px 0 2px;padding-top:4px;border-top:1px dashed var(--line);}
+    .dr3{display:grid;grid-template-columns:1fr 46px 46px 64px;gap:0 4px;align-items:center;padding:2.5px 0;font-size:11px;}
+    .dr3 .k{color:var(--muted);text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .dr3 .p1,.dr3 .p2{text-align:right;color:var(--muted);font-variant-numeric:tabular-nums;}
+    .dr3 .v{text-align:right;color:var(--ink);font-variant-numeric:tabular-nums;}
+    .dr3.b{padding:4px 0;}
+    .dr3.b .k,.dr3.b .p1,.dr3.b .p2,.dr3.b .v{font-weight:700;color:var(--ink);}
+    .dist-section{background:#f0f4fb;border-radius:8px;padding:7px 9px;margin-bottom:7px;}
+    .dist-section .dr3{padding:2px 0;}
     .dcol{background:#fff;border:1px solid var(--line);border-radius:10px;padding:11px 12px;}
     .dcol-head{font-size:11px;font-weight:700;padding-bottom:6px;margin-bottom:7px;border-bottom:1px solid var(--line);}
     .dcol-head.n{color:#2f7d4f;} .dcol-head.a{color:#1e5c36;} .dcol-head.m{color:#13412a;}
@@ -431,7 +443,11 @@
   const pct = n => n.toFixed(1)+'%';
   const esc = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   const comma = n => Number(n||0).toLocaleString('ko-KR');
-  const numV = id => parseFloat($(id).value)||0;
+  const numV = id => parseFloat(String($(id).value).replace(/,/g,''))||0;
+  // 콤마 포함 문자열 → 숫자
+  const numC = v => parseFloat(String(v).replace(/,/g,''))||0;
+  // 숫자 → 콤마 포함 문자열 (입력란 표시용)
+  const fmtC = n => { const x=Math.round(numC(n)); return x ? x.toLocaleString('ko-KR') : (x===0?'0':''); };
   $('gateBtn').addEventListener('click',   async()=>{ await sb.auth.signOut(); location.href='./index.html'; });
 
   (async function guard(){
@@ -618,8 +634,8 @@
   function addUnitRow(unit){
     const tbody = $('unit-rows');
     const tr = document.createElement('tr');
-    const eaCost    = parseFloat($('inp-unit-cost').value)||(currentProduct?.unit_cost||0);
-    const eaNormal  = parseFloat($('inp-normal-price').value)||(currentProduct?.normal_price||0);
+    const eaCost    = numC($('inp-unit-cost').value)||(currentProduct?.unit_cost||0);
+    const eaNormal  = numC($('inp-normal-price').value)||(currentProduct?.normal_price||0);
     const qty       = unit?.box_qty||1;
     const totalCost = Math.round(eaCost * qty);
     const initNp    = unit ? (unit.normal_price||0) : Math.round(eaNormal * qty);
@@ -630,21 +646,21 @@
     const initEaMp  = qty>0 && initMp>0 ? Math.round(initMp/qty) : 0;
 
     tr.innerHTML=`
-      <td class="tl"><input type="number" class="qty" value="${qty}" min="1" /><div class="disc-label" style="visibility:hidden;">-</div></td>
-      <td><input type="number" class="cost" value="${totalCost}" disabled /><div class="disc-label" style="visibility:hidden;">-</div></td>
-      <td><input type="number" class="ea-np" value="${initEaNp}" /><div class="disc-label" style="visibility:hidden;">-</div></td>
+      <td class="tl"><input type="text" inputmode="numeric" class="qty" value="${qty}" min="1" /><div class="disc-label" style="visibility:hidden;">-</div></td>
+      <td><input type="text" inputmode="numeric" class="cost" value="${fmtC(totalCost)}" disabled /><div class="disc-label" style="visibility:hidden;">-</div></td>
+      <td><input type="text" inputmode="numeric" class="ea-np" value="${fmtC(initEaNp)}" /><div class="disc-label" style="visibility:hidden;">-</div></td>
       <td>
-        <input type="number" class="np" value="${initNp}" />
+        <input type="text" inputmode="numeric" class="np" value="${fmtC(initNp)}" />
         <div class="disc-label" style="visibility:hidden;">-</div>
       </td>
-      <td><input type="number" class="ea-ap" value="${initEaAp}" /><div class="disc-label" style="visibility:hidden;">-</div></td>
+      <td><input type="text" inputmode="numeric" class="ea-ap" value="${initEaAp?fmtC(initEaAp):''}" /><div class="disc-label" style="visibility:hidden;">-</div></td>
       <td>
-        <input type="number" class="ap" value="${initAp}" />
+        <input type="text" inputmode="numeric" class="ap" value="${initAp?fmtC(initAp):''}" />
         <div class="disc-label ap-pct">-</div>
       </td>
-      <td><input type="number" class="ea-mp" value="${initEaMp}" /><div class="disc-label" style="visibility:hidden;">-</div></td>
+      <td><input type="text" inputmode="numeric" class="ea-mp" value="${initEaMp?fmtC(initEaMp):''}" /><div class="disc-label" style="visibility:hidden;">-</div></td>
       <td>
-        <input type="number" class="mp" value="${initMp}" />
+        <input type="text" inputmode="numeric" class="mp" value="${initMp?fmtC(initMp):''}" />
         <div class="disc-label mp-pct">-</div>
       </td>
       <td><button class="btn-del-row" title="삭제">✕</button></td>`;
@@ -660,62 +676,92 @@
 
     // 입수량 변경 → 원가/가격 재계산
     qtyEl.addEventListener('input', e=>{
-      const q = parseFloat(e.target.value)||1;
-      costEl.value = Math.round((parseFloat($('inp-unit-cost').value)||0) * q);
+      const q = numC(e.target.value)||1;
+      costEl.value = fmtC((numC($('inp-unit-cost').value)||0) * q);
       // EA → 총가격으로 재계산
-      const enp = parseFloat(eaNpEl.value)||0;
-      if(enp>0){ npEl.value = Math.round(enp*q); }
-      const eap = parseFloat(eaApEl.value)||0;
-      if(eap>0){ apEl.value = Math.round(eap*q); }
-      const emp = parseFloat(eaMpEl.value)||0;
-      if(emp>0){ mpEl.value = Math.round(emp*q); }
+      const enp = numC(eaNpEl.value)||0;
+      if(enp>0){ npEl.value = fmtC(enp*q); }
+      const eap = numC(eaApEl.value)||0;
+      if(eap>0){ apEl.value = fmtC(eap*q); }
+      const emp = numC(eaMpEl.value)||0;
+      if(emp>0){ mpEl.value = fmtC(emp*q); }
       updateDiscLabels(tr); renderResultTable();
     });
 
     // EA단가 변경 → 총가격 자동계산
     eaNpEl.addEventListener('input', ()=>{
-      const q = parseFloat(qtyEl.value)||1;
-      npEl.value = Math.round((parseFloat(eaNpEl.value)||0)*q);
+      const q = numC(qtyEl.value)||1;
+      npEl.value = fmtC((numC(eaNpEl.value)||0)*q);
       updateDiscLabels(tr); renderResultTable();
     });
     // 총가격 변경 → EA단가 자동계산
     npEl.addEventListener('input', ()=>{
-      const q = parseFloat(qtyEl.value)||1;
-      eaNpEl.value = q>0 ? Math.round((parseFloat(npEl.value)||0)/q) : 0;
+      const q = numC(qtyEl.value)||1;
+      eaNpEl.value = q>0 ? fmtC((numC(npEl.value)||0)/q) : '0';
       updateDiscLabels(tr); renderResultTable();
     });
 
     eaApEl.addEventListener('input', ()=>{
-      const q = parseFloat(qtyEl.value)||1;
-      apEl.value = Math.round((parseFloat(eaApEl.value)||0)*q);
+      const q = numC(qtyEl.value)||1;
+      apEl.value = fmtC((numC(eaApEl.value)||0)*q);
       updateDiscLabels(tr); renderResultTable();
     });
     apEl.addEventListener('input', ()=>{
-      const q = parseFloat(qtyEl.value)||1;
-      eaApEl.value = q>0 ? Math.round((parseFloat(apEl.value)||0)/q) : 0;
+      const q = numC(qtyEl.value)||1;
+      eaApEl.value = q>0 ? fmtC((numC(apEl.value)||0)/q) : '0';
       updateDiscLabels(tr); renderResultTable();
     });
 
     eaMpEl.addEventListener('input', ()=>{
-      const q = parseFloat(qtyEl.value)||1;
-      mpEl.value = Math.round((parseFloat(eaMpEl.value)||0)*q);
+      const q = numC(qtyEl.value)||1;
+      mpEl.value = fmtC((numC(eaMpEl.value)||0)*q);
       updateDiscLabels(tr); renderResultTable();
     });
     mpEl.addEventListener('input', ()=>{
-      const q = parseFloat(qtyEl.value)||1;
-      eaMpEl.value = q>0 ? Math.round((parseFloat(mpEl.value)||0)/q) : 0;
+      const q = numC(qtyEl.value)||1;
+      eaMpEl.value = q>0 ? fmtC((numC(mpEl.value)||0)/q) : '0';
       updateDiscLabels(tr); renderResultTable();
     });
 
     tr.querySelector('.btn-del-row').addEventListener('click', ()=>{ tr.remove(); renderResultTable(); });
+
+    // 위/아래 화살표키로 행 이동
+    tr.querySelectorAll('input:not(:disabled)').forEach(inp=>{
+      inp.addEventListener('keydown', e=>{
+        if(e.key==='ArrowUp'||e.key==='ArrowDown'){
+          e.preventDefault();
+          const allRows = Array.from($('unit-rows').querySelectorAll('tr')).filter(r=>r.querySelector('.qty'));
+          const idx = allRows.indexOf(tr);
+          const target = e.key==='ArrowUp' ? allRows[idx-1] : allRows[idx+1];
+          if(target){
+            const cls = inp.className.trim().split(/\s+/)[0];
+            const targetInp = target.querySelector('.'+cls);
+            if(targetInp && !targetInp.disabled){ targetInp.focus(); targetInp.select(); }
+          }
+        }
+      });
+      // 타이핑 중 실시간 천단위 콤마 (커서 위치 보정)
+      inp.addEventListener('input', e=>{
+        const el = e.target;
+        const raw = el.value.replace(/,/g,'');
+        if(raw==='' || isNaN(raw)) return;
+        const caret = el.selectionStart;
+        const before = el.value.slice(0, caret).replace(/,/g,'').length;
+        el.value = Number(raw).toLocaleString('ko-KR');
+        // 커서 위치 재계산
+        let pos=0, cnt=0;
+        for(let i=0;i<el.value.length;i++){ if(el.value[i]!==','){cnt++;} if(cnt>=before){pos=i+1;break;} pos=i+1; }
+        el.setSelectionRange(pos,pos);
+      });
+    });
     tbody.appendChild(tr);
     updateDiscLabels(tr);
   }
 
   function updateDiscLabels(tr){
-    const np = parseFloat(tr.querySelector('.np').value)||0;
-    const ap = parseFloat(tr.querySelector('.ap').value)||0;
-    const mp = parseFloat(tr.querySelector('.mp').value)||0;
+    const np = numC(tr.querySelector('.np').value)||0;
+    const ap = numC(tr.querySelector('.ap').value)||0;
+    const mp = numC(tr.querySelector('.mp').value)||0;
     tr.querySelector('.ap-pct').textContent = (np>0&&ap>0) ? `↓${(((np-ap)/np)*100).toFixed(1)}%` : '-';
     tr.querySelector('.mp-pct').textContent = (np>0&&mp>0) ? `↓${(((np-mp)/np)*100).toFixed(1)}%` : '-';
   }
@@ -728,25 +774,25 @@
     .forEach(id=>$(id) && $(id).addEventListener('change', renderResultTable));
 
   $('inp-unit-cost') && $('inp-unit-cost').addEventListener('input', ()=>{
-    const eaCost = parseFloat($('inp-unit-cost').value)||0;
+    const eaCost = numC($('inp-unit-cost').value)||0;
     document.querySelectorAll('#unit-rows tr').forEach(tr=>{
       const qtyInput = tr.querySelector('.qty');
       const costInput = tr.querySelector('.cost');
-      if (qtyInput && costInput){ costInput.value = Math.round(eaCost*(parseFloat(qtyInput.value)||1)); }
+      if (qtyInput && costInput){ costInput.value = fmtC(eaCost*(numC(qtyInput.value)||1)); }
     });
     renderResultTable();
   });
 
   $('inp-normal-price') && $('inp-normal-price').addEventListener('input', ()=>{
-    const eaNormal = parseFloat($('inp-normal-price').value)||0;
+    const eaNormal = numC($('inp-normal-price').value)||0;
     document.querySelectorAll('#unit-rows tr').forEach(tr=>{
       const qtyInput = tr.querySelector('.qty');
       const npInput  = tr.querySelector('.np');
       const eaNpInput = tr.querySelector('.ea-np');
       if (qtyInput && npInput){
-        const qty = parseFloat(qtyInput.value)||1;
-        npInput.value  = Math.round(eaNormal * qty);
-        if(eaNpInput) eaNpInput.value = eaNormal;
+        const qty = numC(qtyInput.value)||1;
+        npInput.value  = fmtC(eaNormal * qty);
+        if(eaNpInput) eaNpInput.value = fmtC(eaNormal);
         updateDiscLabels(tr);
       }
     });
@@ -774,34 +820,65 @@
     return Array.from($('unit-rows').querySelectorAll('tr')).filter(tr=>tr.querySelector('.qty'));
   }
 
-  function calcProfit(price, boxQty){
+  // price=해당 가격대(정상/상시/최대), normalP=정상판매가(직납 기준점). 위탁은 normalP 무시.
+  function calcProfit(price, boxQty, normalP){
     if (!price||!currentChannel) return null;
     const eaCost  = parseFloat($('inp-unit-cost').value)||0;
     const vatEx   = price/1.1;
     const isDirect= currentChannel.channel_type==='direct';
     const temp    = (currentProduct?.temperature) || $('disp-temp').value || '실온';
     const fm      = freightMaster[temp]||{consign:0,dRate:0,dDist:0};
-    const distRate   = isDirect ? fm.dDist : 0;
-    const distProfit = isDirect ? vatEx*(distRate/100) : 0;
-    const supply     = vatEx - distProfit;
-    const cost       = eaCost * boxQty;
-    const feeBase= currentChannel.commission_base==='vat' ? price : supply;
-    const fee    = feeBase * (numV('feeRate')/100);
+    const cost    = eaCost * boxQty;
     const adVal  = numV('adValue');
-    const ad     = $('adType').value==='fixed' ? adVal : supply*(adVal/100);
     const promoVal=numV('promoValue');
-    const promo  = $('promoType').value==='fixed' ? promoVal : supply*(promoVal/100);
-    let freight;
-    if (isDirect){ freight=supply*(fm.dRate/100); }
-    else { freight=fm.consign/(boxQty||1); }
     const hqVal  = numV('hqValue');
-    const hq     = $('hqType').value==='fixed' ? hqVal : supply*(hqVal/100);
     const divVal = numV('divValue');
-    const div    = $('divType').value==='fixed' ? divVal : supply*(divVal/100);
-    const directProfit = supply-cost-fee-ad-promo-freight;
-    const opProfit     = directProfit-hq-div;
-    const opRate       = supply>0 ? opProfit/supply*100 : 0;
-    return {price,vatEx,distRate,distProfit,supply,cost,fee,ad,promo,freight,hq,div,directProfit,opProfit,opRate,isDirect};
+
+    if (isDirect){
+      // ── 직납 채널 ──
+      const distRate  = fm.dDist;                    // 유통사이익율 (%)
+      const dType     = currentChannel.discount_type || 'case1';
+      const normVatEx = (normalP||price)/1.1;        // 정상가의 VAT별도
+      const discVatEx = vatEx;                        // 이 가격대(할인가)의 VAT별도
+
+      // 기준 VAT별도가: case1=정상 기준 고정, case2=할인 기준
+      const baseVatEx  = (dType==='case2') ? discVatEx : normVatEx;
+      const distProfit = baseVatEx*(distRate/100);   // 유통사이익
+      const supply     = baseVatEx - distProfit;     // 공급가 = VAT별도 − 유통사이익
+
+      // 판관비는 모두 '공급가(supply)' 기준으로 계산
+      const feeRate = numV('feeRate');
+      const feeAmt  = supply*(feeRate/100);
+      const adAmt   = $('adType').value==='fixed' ? adVal : supply*(adVal/100);
+      const promoAmt= $('promoType').value==='fixed' ? promoVal : supply*(promoVal/100);
+      const freight = supply*(fm.dRate/100);
+      const hqAmt   = $('hqType').value==='fixed' ? hqVal : supply*(hqVal/100);
+      const divAmt  = $('divType').value==='fixed' ? divVal : supply*(divVal/100);
+
+      // 할인분담금: case1만 차감 (정상 VAT별도 − 할인 VAT별도)
+      const discShare = (dType==='case1') ? (normVatEx - discVatEx) : 0;
+
+      const opProfit = supply - cost - discShare - feeAmt - adAmt - promoAmt - freight - hqAmt - divAmt;
+      const opRate   = supply>0 ? opProfit/supply*100 : 0;
+      return {
+        price, vatEx:discVatEx, normVatEx, distRate, distProfit, supply,
+        cost, fee:feeAmt, ad:adAmt, promo:promoAmt, freight, hq:hqAmt, div:divAmt,
+        discShare, dType, opProfit, opRate, isDirect:true
+      };
+    } else {
+      // ── 위탁 채널 (기존 로직) ──
+      const supply = vatEx;
+      const feeBase= currentChannel.commission_base==='vat' ? price : supply;
+      const fee    = feeBase * (numV('feeRate')/100);
+      const ad     = $('adType').value==='fixed' ? adVal : supply*(adVal/100);
+      const promo  = $('promoType').value==='fixed' ? promoVal : supply*(promoVal/100);
+      const freight= fm.consign;
+      const hq     = $('hqType').value==='fixed' ? hqVal : supply*(hqVal/100);
+      const div    = $('divType').value==='fixed' ? divVal : supply*(divVal/100);
+      const opProfit = supply-cost-fee-ad-promo-freight-hq-div;
+      const opRate   = supply>0 ? opProfit/supply*100 : 0;
+      return {price,vatEx,distRate:0,distProfit:0,supply,cost,fee,ad,promo,freight,hq,div,discShare:0,opProfit,opRate,isDirect:false};
+    }
   }
 
   function renderResultTable(){
@@ -816,11 +893,11 @@
     }
     tbody.innerHTML='';
     rows.forEach(tr=>{
-      const qty = parseFloat(tr.querySelector('.qty').value)||1;
-      const np  = parseFloat(tr.querySelector('.np').value)||0;
-      const ap  = parseFloat(tr.querySelector('.ap').value)||0;
-      const mp  = parseFloat(tr.querySelector('.mp').value)||0;
-      const rn=calcProfit(np,qty), ra=calcProfit(ap,qty), rm=calcProfit(mp,qty);
+      const qty = numC(tr.querySelector('.qty').value)||1;
+      const np  = numC(tr.querySelector('.np').value)||0;
+      const ap  = numC(tr.querySelector('.ap').value)||0;
+      const mp  = numC(tr.querySelector('.mp').value)||0;
+      const rn=calcProfit(np,qty,np), ra=calcProfit(ap,qty,np), rm=calcProfit(mp,qty,np);
       const eaUnit = parseFloat($('inp-unit-cost').value)||0;
       const eaNpV = qty>0&&np>0 ? Math.round(np/qty) : 0;
       const eaApV = qty>0&&ap>0 ? Math.round(ap/qty) : 0;
@@ -857,22 +934,50 @@
     .forEach(({r,label,cls})=>{
       const col=document.createElement('div'); col.className='dcol';
       if(!r||!r.price){ col.innerHTML=`<div class="dcol-head ${cls}">${label}</div><p style="color:var(--muted);font-size:12px;padding:6px 0;">가격 미설정</p>`; grid.appendChild(col); return; }
-      col.innerHTML=`
-        <div class="dcol-head ${cls}">${label}</div>
-        ${r.isDirect?`<div class="dr"><span class="k">판매가 (÷1.1)</span><span class="v">${won(r.vatEx)}</span></div>
-        <div class="dr"><span class="k">− 유통사이익 ${pct(r.distRate)}</span><span class="v">${won(r.distProfit)}</span></div>`:''}
-        <div class="dr b"><span class="k">= 공급가</span><span class="v">${won(r.supply)}</span></div>
-        <div class="dvl"></div>
-        <div class="dr"><span class="k">− 상품원가</span><span class="v">${won(r.cost)}</span></div>
-        <div class="dr"><span class="k">− 지급수수료</span><span class="v">${won(r.fee)}</span></div>
-        <div class="dr"><span class="k">− 광고선전비</span><span class="v">${won(r.ad)}</span></div>
-        <div class="dr"><span class="k">− 판매촉진비</span><span class="v">${won(r.promo)}</span></div>
-        <div class="dr"><span class="k">− 운반비</span><span class="v">${won(r.freight)}</span></div>
-        <div class="dr"><span class="k">− 본부공통비</span><span class="v">${won(r.hq)}</span></div>
-        <div class="dr"><span class="k">− 부문공통비</span><span class="v">${won(r.div)}</span></div>
-        <div class="dvl"></div>
-        <div class="dr b"><span class="k">영업이익</span><span class="v" style="color:${r.opRate>=10?'var(--good)':'var(--bad)'}">${won(r.opProfit)}</span></div>
-        <div class="dr b"><span class="k">이익률</span><span class="v" style="color:${r.opRate>=10?'var(--good)':'var(--bad)'}">${pct(r.opRate)}</span></div>`;
+      const sp = r.supply;
+      const pp = (v)=> sp>0 ? pct(v/sp*100) : '-';
+      // 행 생성: 항목 | 비율1(p1) | 비율2(p2) | 금액(v)
+      const row = (k, v, opt={})=>{
+        const bCls = opt.bold ? 'b' : '';
+        const p1 = opt.p1!=null ? opt.p1 : '';
+        const p2 = opt.p2!=null ? opt.p2 : '';
+        const vStyle = opt.color ? `style="color:${opt.color}"` : '';
+        return `<div class="dr3 ${bCls}"><span class="k">${k}</span><span class="p1">${p1}</span><span class="p2">${p2}</span><span class="v" ${vStyle}>${v}</span></div>`;
+      };
+      let html = `<div class="dcol-head ${cls}">${label}</div>`;
+      if(r.isDirect){
+        const caseLabel = (r.dType==='case2') ? 'case2 · 할인공급가 기준' : 'case1 · 정상공급가 기준';
+        // 직납: 판매가 → vat별도 → 유통사이익 (파란 박스)
+        html += `<div class="dist-section">`;
+        html += row('판매가 (vat포함)', won(r.price), {p1:'110%'});
+        html += row('└ vat별도', won(r.vatEx), {p1:'100%'});
+        html += row(`유통사이익`, won(r.distProfit), {p1:pct(r.distRate)});
+        html += `</div>`;
+        html += `<div style="font-size:10px;color:var(--muted);text-align:right;margin:-2px 0 4px;">${caseLabel}</div>`;
+        // 공급가: 좌측에 (100-유통사이익율)%, 우측에 100%
+        html += row('= 공급가 (vat별도)', won(r.supply), {bold:true, p1:pct(100-r.distRate), p2:'100%'});
+        // case1 할인 시에만 할인분담금 행 표시
+        if(r.dType==='case1' && r.discShare>0){
+          html += `<div class="dvl"></div>`;
+          html += row('할인분담금', won(r.discShare), {p2:pp(r.discShare)});
+        }
+      } else {
+        // 위탁: 판매가 → 공급가
+        html += row('정상판매가 (vat포함)', won(r.price), {p1:'110%'});
+        html += row('공급가 (vat별도)', won(r.supply), {bold:true, p1:'100%'});
+      }
+      html += `<div class="dvl"></div>`;
+      html += row('상품원가', won(r.cost), {p2:pp(r.cost)});
+      html += row('지급수수료', won(r.fee), {p2:pp(r.fee)});
+      html += row('광고선전비', won(r.ad), {p2:pp(r.ad)});
+      html += row('판매촉진비', won(r.promo), {p2:pp(r.promo)});
+      html += row('운반비', won(r.freight), {p2:pp(r.freight)});
+      html += row('본부공통비', won(r.hq), {p2:pp(r.hq)});
+      html += row('부문공통비', won(r.div), {p2:pp(r.div)});
+      html += `<div class="dvl"></div>`;
+      const profColor = r.opRate>=10 ? 'var(--good)' : 'var(--bad)';
+      html += row('영업이익', won(r.opProfit), {bold:true, p2:pct(r.opRate), color:profColor});
+      col.innerHTML = html;
       grid.appendChild(col);
     });
     $('detail-panel').classList.add('show');
@@ -911,10 +1016,10 @@
     }
     const upsertData = rows.map(tr=>({
       product_id: currentProduct.id,
-      box_qty:    parseInt(tr.querySelector('.qty').value)||1,
-      normal_price: parseFloat(tr.querySelector('.np').value)||0,
-      always_price: parseFloat(tr.querySelector('.ap').value)||0,
-      max_price:    parseFloat(tr.querySelector('.mp').value)||0,
+      box_qty:    parseInt(numC(tr.querySelector('.qty').value))||1,
+      normal_price: numC(tr.querySelector('.np').value)||0,
+      always_price: numC(tr.querySelector('.ap').value)||0,
+      max_price:    numC(tr.querySelector('.mp').value)||0,
       is_active: true, updated_by: me.id, updated_at: new Date().toISOString(),
     }));
     await sb.from('product_units').delete().eq('product_id',currentProduct.id);
@@ -932,10 +1037,10 @@
     const insData = rows.map(tr=>({
       user_id: me.id, title,
       product_id: currentProduct.id, channel_id: currentChannel.id,
-      box_qty: parseInt(tr.querySelector('.qty').value)||1,
-      normal_price: parseFloat(tr.querySelector('.np').value)||0,
-      always_price: parseFloat(tr.querySelector('.ap').value)||0,
-      max_price:    parseFloat(tr.querySelector('.mp').value)||0,
+      box_qty: parseInt(numC(tr.querySelector('.qty').value))||1,
+      normal_price: numC(tr.querySelector('.np').value)||0,
+      always_price: numC(tr.querySelector('.ap').value)||0,
+      max_price:    numC(tr.querySelector('.mp').value)||0,
       created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
     }));
     const { error } = await sb.from('scenarios').insert(insData);
@@ -1033,4 +1138,6 @@
 </script>
 </body>
 </html>
+
+
 
