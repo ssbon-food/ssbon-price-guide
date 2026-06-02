@@ -95,7 +95,16 @@
     .detail{display:none;background:#f8faf8;border-top:1px solid var(--line);padding:14px 16px;}
     .detail.show{display:block;}
     .detail-title{font-size:12px;font-weight:700;margin-bottom:10px;color:var(--ink);}
-    .detail-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+    .detail-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+    .dcol-pct{font-size:11px;color:var(--muted);min-width:42px;text-align:right;}
+    .dr .pct{font-size:11px;color:var(--muted);margin-right:4px;}
+    .dcol-section{font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin:6px 0 2px;padding-top:4px;border-top:1px dashed var(--line);}
+    .dr3{display:grid;grid-template-columns:1fr auto auto;gap:0 6px;align-items:center;padding:2px 0;font-size:11px;}
+    .dr3 .k{color:var(--muted);}
+    .dr3 .pct{text-align:right;color:var(--muted);min-width:40px;}
+    .dr3 .v{text-align:right;color:var(--ink);min-width:52px;}
+    .dr3.b .k,.dr3.b .pct,.dr3.b .v{font-weight:700;color:var(--ink);}
+    .dist-section{background:#f0f4fb;border-radius:6px;padding:5px 7px;margin-bottom:6px;}
     .dcol{background:#fff;border:1px solid var(--line);border-radius:10px;padding:11px 12px;}
     .dcol-head{font-size:11px;font-weight:700;padding-bottom:6px;margin-bottom:7px;border-bottom:1px solid var(--line);}
     .dcol-head.n{color:#2f7d4f;} .dcol-head.a{color:#1e5c36;} .dcol-head.m{color:#13412a;}
@@ -630,21 +639,21 @@
     const initEaMp  = qty>0 && initMp>0 ? Math.round(initMp/qty) : 0;
 
     tr.innerHTML=`
-      <td class="tl"><input type="number" class="qty" value="${qty}" min="1" /><div class="disc-label" style="visibility:hidden;">-</div></td>
-      <td><input type="number" class="cost" value="${totalCost}" disabled /><div class="disc-label" style="visibility:hidden;">-</div></td>
-      <td><input type="number" class="ea-np" value="${initEaNp}" /><div class="disc-label" style="visibility:hidden;">-</div></td>
+      <td class="tl"><input type="text" inputmode="numeric" class="qty" value="${qty}" min="1" /><div class="disc-label" style="visibility:hidden;">-</div></td>
+      <td><input type="text" inputmode="numeric" class="cost" value="${totalCost}" disabled /><div class="disc-label" style="visibility:hidden;">-</div></td>
+      <td><input type="text" inputmode="numeric" class="ea-np" value="${initEaNp}" /><div class="disc-label" style="visibility:hidden;">-</div></td>
       <td>
-        <input type="number" class="np" value="${initNp}" />
+        <input type="text" inputmode="numeric" class="np" value="${initNp}" />
         <div class="disc-label" style="visibility:hidden;">-</div>
       </td>
-      <td><input type="number" class="ea-ap" value="${initEaAp}" /><div class="disc-label" style="visibility:hidden;">-</div></td>
+      <td><input type="text" inputmode="numeric" class="ea-ap" value="${initEaAp}" /><div class="disc-label" style="visibility:hidden;">-</div></td>
       <td>
-        <input type="number" class="ap" value="${initAp}" />
+        <input type="text" inputmode="numeric" class="ap" value="${initAp}" />
         <div class="disc-label ap-pct">-</div>
       </td>
-      <td><input type="number" class="ea-mp" value="${initEaMp}" /><div class="disc-label" style="visibility:hidden;">-</div></td>
+      <td><input type="text" inputmode="numeric" class="ea-mp" value="${initEaMp}" /><div class="disc-label" style="visibility:hidden;">-</div></td>
       <td>
-        <input type="number" class="mp" value="${initMp}" />
+        <input type="text" inputmode="numeric" class="mp" value="${initMp}" />
         <div class="disc-label mp-pct">-</div>
       </td>
       <td><button class="btn-del-row" title="삭제">✕</button></td>`;
@@ -708,6 +717,23 @@
     });
 
     tr.querySelector('.btn-del-row').addEventListener('click', ()=>{ tr.remove(); renderResultTable(); });
+
+    // 위/아래 화살표키로 행 이동
+    tr.querySelectorAll('input:not(:disabled)').forEach(inp=>{
+      inp.addEventListener('keydown', e=>{
+        if(e.key==='ArrowUp'||e.key==='ArrowDown'){
+          e.preventDefault();
+          const allRows = Array.from($('unit-rows').querySelectorAll('tr')).filter(r=>r.querySelector('.qty'));
+          const idx = allRows.indexOf(tr);
+          const target = e.key==='ArrowUp' ? allRows[idx-1] : allRows[idx+1];
+          if(target){
+            const cls = inp.className.trim().split(/\s+/)[0];
+            const targetInp = target.querySelector('.'+cls);
+            if(targetInp && !targetInp.disabled){ targetInp.focus(); targetInp.select(); }
+          }
+        }
+      });
+    });
     tbody.appendChild(tr);
     updateDiscLabels(tr);
   }
@@ -793,7 +819,7 @@
     const promo  = $('promoType').value==='fixed' ? promoVal : supply*(promoVal/100);
     let freight;
     if (isDirect){ freight=supply*(fm.dRate/100); }
-    else { freight=fm.consign/(boxQty||1); }
+    else { freight=fm.consign; }
     const hqVal  = numV('hqValue');
     const hq     = $('hqType').value==='fixed' ? hqVal : supply*(hqVal/100);
     const divVal = numV('divValue');
@@ -857,22 +883,37 @@
     .forEach(({r,label,cls})=>{
       const col=document.createElement('div'); col.className='dcol';
       if(!r||!r.price){ col.innerHTML=`<div class="dcol-head ${cls}">${label}</div><p style="color:var(--muted);font-size:12px;padding:6px 0;">가격 미설정</p>`; grid.appendChild(col); return; }
-      col.innerHTML=`
-        <div class="dcol-head ${cls}">${label}</div>
-        ${r.isDirect?`<div class="dr"><span class="k">판매가 (÷1.1)</span><span class="v">${won(r.vatEx)}</span></div>
-        <div class="dr"><span class="k">− 유통사이익 ${pct(r.distRate)}</span><span class="v">${won(r.distProfit)}</span></div>`:''}
-        <div class="dr b"><span class="k">= 공급가</span><span class="v">${won(r.supply)}</span></div>
-        <div class="dvl"></div>
-        <div class="dr"><span class="k">− 상품원가</span><span class="v">${won(r.cost)}</span></div>
-        <div class="dr"><span class="k">− 지급수수료</span><span class="v">${won(r.fee)}</span></div>
-        <div class="dr"><span class="k">− 광고선전비</span><span class="v">${won(r.ad)}</span></div>
-        <div class="dr"><span class="k">− 판매촉진비</span><span class="v">${won(r.promo)}</span></div>
-        <div class="dr"><span class="k">− 운반비</span><span class="v">${won(r.freight)}</span></div>
-        <div class="dr"><span class="k">− 본부공통비</span><span class="v">${won(r.hq)}</span></div>
-        <div class="dr"><span class="k">− 부문공통비</span><span class="v">${won(r.div)}</span></div>
-        <div class="dvl"></div>
-        <div class="dr b"><span class="k">영업이익</span><span class="v" style="color:${r.opRate>=10?'var(--good)':'var(--bad)'}">${won(r.opProfit)}</span></div>
-        <div class="dr b"><span class="k">이익률</span><span class="v" style="color:${r.opRate>=10?'var(--good)':'var(--bad)'}">${pct(r.opRate)}</span></div>`;
+      const sp = r.supply;
+      const pp = (v)=> sp>0 ? pct(v/sp*100) : '-';
+      const row = (k, v, bold=false, pctV='')=>{
+        const bCls = bold ? 'b' : '';
+        const pctStr = pctV ? `<span class="pct">${pctV}</span>` : `<span class="pct"></span>`;
+        return `<div class="dr3 ${bCls}"><span class="k">${k}</span>${pctStr}<span class="v">${v}</span></div>`;
+      };
+      let html = `<div class="dcol-head ${cls}">${label}</div>`;
+      // 직납: 유통사이익 섹션
+      if(r.isDirect){
+        html += `<div class="dist-section">
+          ${row('판매가 (vat포함) 110%', won(r.price))}
+          ${row('└ vat별도 100%', won(r.vatEx))}
+          ${row(`유통사이익 ${pct(r.distRate)}`, won(r.distProfit), false, pct(r.distRate))}
+        </div>`;
+      } else {
+        html += `${row('정상판매가 (vat포함) 110%', won(r.price))}`;
+      }
+      html += `${row('= 공급가 (vat별도)', won(r.supply), true, r.isDirect ? pct(100-r.distRate)+'  100%' : '100%')}`;
+      html += `<div class="dvl"></div>`;
+      html += row('− 상품원가', won(r.cost), false, pp(r.cost));
+      html += row('− 지급수수료', won(r.fee), false, pp(r.fee));
+      html += row('− 광고선전비', won(r.ad), false, pp(r.ad));
+      html += row('− 판매촉진비', won(r.promo), false, pp(r.promo));
+      html += row('− 운반비', won(r.freight), false, pp(r.freight));
+      html += row('− 본부공통비', won(r.hq), false, pp(r.hq));
+      html += row('− 부문공통비', won(r.div), false, pp(r.div));
+      html += `<div class="dvl"></div>`;
+      const profColor = r.opRate>=10 ? 'var(--good)' : 'var(--bad)';
+      html += `<div class="dr3 b"><span class="k">영업이익</span><span class="pct" style="color:${profColor}">${pct(r.opRate)}</span><span class="v" style="color:${profColor}">${won(r.opProfit)}</span></div>`;
+      col.innerHTML = html;
       grid.appendChild(col);
     });
     $('detail-panel').classList.add('show');
@@ -1033,3 +1074,4 @@
 </script>
 </body>
 </html>
+
