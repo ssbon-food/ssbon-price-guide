@@ -929,16 +929,16 @@
         html += row('공급가 (vat별도)', won(r.supply), {bold:true, p1:'100%'});
       }
       html += `<div class="dvl"></div>`;
-      html += row('상품원가', won(r.cost), {p1:pp(r.cost)});
-      html += row('지급수수료', won(r.fee), {p1:pp(r.fee)});
-      html += row('광고선전비', won(r.ad), {p1:pp(r.ad)});
-      html += row('판매촉진비', won(r.promo), {p1:pp(r.promo)});
-      html += row('운반비', won(r.freight), {p1:pp(r.freight)});
-      html += row('본부공통비', won(r.hq), {p1:pp(r.hq)});
-      html += row('부문공통비', won(r.div), {p1:pp(r.div)});
+      html += row('상품원가', won(r.cost), {p2:pp(r.cost)});
+      html += row('지급수수료', won(r.fee), {p2:pp(r.fee)});
+      html += row('광고선전비', won(r.ad), {p2:pp(r.ad)});
+      html += row('판매촉진비', won(r.promo), {p2:pp(r.promo)});
+      html += row('운반비', won(r.freight), {p2:pp(r.freight)});
+      html += row('본부공통비', won(r.hq), {p2:pp(r.hq)});
+      html += row('부문공통비', won(r.div), {p2:pp(r.div)});
       html += `<div class="dvl"></div>`;
       const profColor = r.opRate>=10 ? 'var(--good)' : 'var(--bad)';
-      html += row('영업이익', won(r.opProfit), {bold:true, p1:pct(r.opRate), color:profColor});
+      html += row('영업이익', won(r.opProfit), {bold:true, p2:pct(r.opRate), color:profColor});
       col.innerHTML = html;
       grid.appendChild(col);
     });
@@ -1100,5 +1100,6 @@
 </script>
 </body>
 </html>
+
 
 
