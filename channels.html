@@ -97,6 +97,10 @@
   .ssbon-nav-btn:hover{background:#f0f3f0;}
   .ssbon-nav-btn.primary{color:#fff;background:#2f7d4f;border-color:#2f7d4f;}
   .ssbon-nav-btn.primary:hover{background:#266a42;}
+    .rate-fixed-label{font-size:12px;color:var(--muted);padding:7px 8px;background:#f0f3f0;border-radius:8px;white-space:nowrap;flex-shrink:0;}
+    th.sortable{cursor:pointer;user-select:none;white-space:nowrap;}
+    th.sortable:hover{background:#f0f3f0;}
+    .sort-ind{margin-left:3px;font-size:10px;color:var(--accent);}
   </style>
 </head>
 <body>
@@ -154,14 +158,15 @@
       <table>
         <thead>
           <tr>
-            <th>채널명</th><th>유형</th>
-            <th class="ctr">대표<br><span style="font-size:11px;font-weight:400;">채널</span></th>
+            <th class="sortable" data-sort="name">채널명<span class="sort-ind"></span></th>
+            <th class="sortable" data-sort="channel_type">유형<span class="sort-ind"></span></th>
+            <th class="ctr sortable" data-sort="is_representative">대표<br><span style="font-size:11px;font-weight:400;">채널</span><span class="sort-ind"></span></th>
             <th class="ctr">유통사이익율<br><span style="font-size:11px;font-weight:400;">(직납만)</span></th>
-            <th>지급수수료</th>
-            <th class="num">광고선전비</th><th class="num">판매촉진비</th>
-            <th class="num">본부공통비</th><th class="num">부문공통비</th>
-            <th class="num">기타고정비</th>
-            <th>상태</th><th></th>
+            <th class="sortable" data-sort="commission_rate">지급수수료<span class="sort-ind"></span></th>
+            <th class="num sortable" data-sort="ad_value">광고선전비<span class="sort-ind"></span></th><th class="num sortable" data-sort="promotion_value">판매촉진비<span class="sort-ind"></span></th>
+            <th class="num sortable" data-sort="hq_value">본부공통비<span class="sort-ind"></span></th><th class="num sortable" data-sort="div_value">부문공통비<span class="sort-ind"></span></th>
+            <th class="num sortable" data-sort="other_fixed">기타고정비<span class="sort-ind"></span></th>
+            <th class="sortable" data-sort="is_active">상태<span class="sort-ind"></span></th><th></th>
           </tr>
         </thead>
         <tbody id="rows"></tbody>
@@ -187,13 +192,6 @@
           <option value="direct">직납채널</option>
         </select>
       </div>
-      <div class="field">
-        <label>수수료 부과 기준</label>
-        <select id="f-base">
-          <option value="supply">공급가 기준</option>
-          <option value="vat">VAT포함가 기준</option>
-        </select>
-      </div>
       <div class="field" id="field-disctype" style="display:none;">
         <label>할인분담금 방식 <span style="font-size:11px;font-weight:400;color:var(--muted);">(직납만)</span></label>
         <select id="f-disctype">
@@ -214,14 +212,14 @@
       <div class="field">
         <label>광고선전비</label>
         <div class="combo">
-          <select id="f-adType"><option value="rate">정률 %</option><option value="fixed">정액 원</option></select>
+          <span class="rate-fixed-label">정률 %</span>
           <input id="f-adValue" class="num" type="number" step="any" placeholder="0" />
         </div>
       </div>
       <div class="field">
         <label>판매촉진비</label>
         <div class="combo">
-          <select id="f-promoType"><option value="rate">정률 %</option><option value="fixed">정액 원</option></select>
+          <span class="rate-fixed-label">정률 %</span>
           <input id="f-promoValue" class="num" type="number" step="any" placeholder="0" />
         </div>
       </div>
@@ -230,14 +228,14 @@
       <div class="field">
         <label>본부공통비</label>
         <div class="combo">
-          <select id="f-hqType"><option value="rate">정률 %</option><option value="fixed">정액 원</option></select>
+          <span class="rate-fixed-label">정률 %</span>
           <input id="f-hqValue" class="num" type="number" step="any" placeholder="0" />
         </div>
       </div>
       <div class="field">
         <label>부문공통비</label>
         <div class="combo">
-          <select id="f-divType"><option value="rate">정률 %</option><option value="fixed">정액 원</option></select>
+          <span class="rate-fixed-label">정률 %</span>
           <input id="f-divValue" class="num" type="number" step="any" placeholder="0" />
         </div>
       </div>
@@ -298,8 +296,7 @@
   const typeTag=(t)=>t==="direct"
     ?'<span class="type-tag type-direct">직납</span>'
     :'<span class="type-tag type-consign">위탁</span>';
-  const baseLabel=(b)=>b==="vat"?"VAT포함가":"공급가";
-  const tv=(type,value)=>type==="fixed"?(comma(value)+"원"):((value||0)+"%");
+  const tv=(type,value)=>((value||0)+"%");
 
   $("f-chtype").addEventListener("change", function(){
     $("direct-section").classList.toggle("show", this.value==="direct");
@@ -352,6 +349,7 @@
     renderTable();
   }
 
+  let sortKey="name", sortAsc=true;
   function renderTable(){
     const keyword=$("search").value.trim().toLowerCase();
     const includeInactive=$("show-inactive").checked;
@@ -359,6 +357,21 @@
       if(!includeInactive&&c.is_active===false) return false;
       if(!keyword) return true;
       return (c.name||"").toLowerCase().includes(keyword);
+    });
+    // 정렬
+    const numKeys=["commission_rate","ad_value","promotion_value","hq_value","div_value","other_fixed"];
+    list.sort((a,b)=>{
+      let va=a[sortKey], vb=b[sortKey];
+      if(numKeys.includes(sortKey)){ va=Number(va)||0; vb=Number(vb)||0; return sortAsc?va-vb:vb-va; }
+      if(sortKey==="is_active"){ va=a.is_active===false?0:1; vb=b.is_active===false?0:1; return sortAsc?va-vb:vb-va; }
+      if(sortKey==="is_representative"){ va=a.is_representative?1:0; vb=b.is_representative?1:0; return sortAsc?vb-va:va-vb; }
+      va=(va||"").toString(); vb=(vb||"").toString();
+      return sortAsc?va.localeCompare(vb,'ko'):vb.localeCompare(va,'ko');
+    });
+    // 정렬 표시기
+    document.querySelectorAll("th.sortable").forEach(th=>{
+      const ind=th.querySelector(".sort-ind");
+      if(ind) ind.textContent=(th.dataset.sort===sortKey)?(sortAsc?"▲":"▼"):"";
     });
     const tbody=$("rows"); tbody.innerHTML="";
     $("empty").style.display=list.length?"none":"block";
@@ -384,7 +397,7 @@
           ? '<span style="color:#2f7d4f;font-weight:700;font-size:13px;">★</span>'
           : '<span style="color:#ccc;font-size:13px;">☆</span>'}</td>
         <td class="ctr">${distRateCell}</td>
-        <td style="max-width:120px;">${c.commission_rate||0}% <span class="sub">/ ${baseLabel(c.commission_base)}</span></td>
+        <td style="max-width:120px;">${c.commission_rate||0}%</td>
         <td class="num">${tv(c.ad_type,c.ad_value)}</td>
         <td class="num">${tv(c.promotion_type,c.promotion_value)}</td>
         <td class="num">${tv(c.hq_type,c.hq_value)}</td>
@@ -411,6 +424,14 @@
     });
   }
 
+  document.addEventListener("click", e=>{
+    const th=e.target.closest("th.sortable");
+    if(!th) return;
+    const key=th.dataset.sort;
+    if(sortKey===key) sortAsc=!sortAsc; else { sortKey=key; sortAsc=true; }
+    renderTable();
+  });
+
   function esc(s){return String(s??"").replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));}
 
   async function openModal(c){
@@ -418,16 +439,11 @@
     $("modal-title").textContent=c?"채널 수정":"새 채널";
     $("f-name").value=c?c.name:"";
     $("f-chtype").value=c?(c.channel_type||"consign"):"consign";
-    $("f-base").value=c?(c.commission_base||"supply"):"supply";
     $("f-fee").value=c?(c.commission_rate??""):"";
     $("f-other").value=c?(c.other_fixed??""):"";
-    $("f-adType").value=c?(c.ad_type||"rate"):"rate";
     $("f-adValue").value=c?(c.ad_value??""):"";
-    $("f-promoType").value=c?(c.promotion_type||"rate"):"rate";
     $("f-promoValue").value=c?(c.promotion_value??""):"";
-    $("f-hqType").value=c?(c.hq_type||"rate"):"rate";
     $("f-hqValue").value=c?(c.hq_value??""):"";
-    $("f-divType").value=c?(c.div_type||"rate"):"rate";
     $("f-divValue").value=c?(c.div_value??""):"";
     const isDirect=(c?.channel_type==="direct");
     $("direct-section").classList.toggle("show", isDirect);
@@ -450,11 +466,11 @@
   async function saveChannel(){
     const payload={
       name:$("f-name").value.trim(),channel_type:$("f-chtype").value,
-      commission_rate:numVal("f-fee"),commission_base:$("f-base").value,
-      ad_type:$("f-adType").value,ad_value:numVal("f-adValue"),
-      promotion_type:$("f-promoType").value,promotion_value:numVal("f-promoValue"),
-      hq_type:$("f-hqType").value,hq_value:numVal("f-hqValue"),
-      div_type:$("f-divType").value,div_value:numVal("f-divValue"),
+      commission_rate:numVal("f-fee"),commission_base:"supply",
+      ad_type:"rate",ad_value:numVal("f-adValue"),
+      promotion_type:"rate",promotion_value:numVal("f-promoValue"),
+      hq_type:"rate",hq_value:numVal("f-hqValue"),
+      div_type:"rate",div_value:numVal("f-divValue"),
       other_fixed:numVal("f-other"),discount_type:$("f-disctype").value,updated_by:me.id,updated_at:new Date().toISOString(),
     };
     if(!payload.name){alert("채널명은 꼭 입력해야 해요.");return;}
@@ -518,4 +534,5 @@
 </script>
 </body>
 </html>
+
 
