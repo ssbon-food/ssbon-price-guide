@@ -142,7 +142,7 @@
         const pending = (u.role === 'pending');
         const roleOpts = ROLES.map(r => '<option value="'+r+'"'+(r===u.role?' selected':'')+'>'+r+'</option>').join('');
         return '<tr>' +
-          '<td><div class="email">'+ (u.name || '-') +'</div><div class="sub">'+ u.email + (pending ? ' <span class="badge">승인대기</span>' : '') +'</div></td>' +
+          '<td><input type="text" id="name-'+i+'" value="'+ (u.name ? u.name.replace(/"/g,'&quot;') : '') +'" placeholder="이름 입력" style="width:130px;padding:5px 8px;border:1px solid #d8e0d8;border-radius:6px;font-size:14px;font-family:inherit;" /><div class="sub" style="margin-top:3px;">'+ u.email + (pending ? ' <span class="badge">승인대기</span>' : '') +'</div></td>' +
           '<td>'+ fmtDate(u.created_at) +'</td>' +
           '<td><select id="role-'+i+'">'+ roleOpts +'</select></td>' +
           '<td style="text-align:center;"><input type="checkbox" id="active-'+i+'"'+(u.is_active?' checked':'')+' /></td>' +
@@ -155,23 +155,27 @@
     }
 
     // 한 사용자 저장 (역할 + 활성)
-    async function update(i, role, isActive){
+    async function update(i, role, isActive, name){
       const u = users[i];
+      const patch = { role: role, is_active: isActive, updated_at: new Date().toISOString() };
+      if (name !== undefined) patch.name = name;
       const { error } = await sb.from('users')
-        .update({ role: role, is_active: isActive, updated_at: new Date().toISOString() })
+        .update(patch)
         .eq('id', u.id);
       if (error){ showMsg('저장 실패: ' + error.message); return false; }
       u.role = role; u.is_active = isActive;
-      showMsg('"' + u.email + '" 저장됨 (역할: ' + role + ', 활성: ' + (isActive?'O':'X') + ')');
+      if (name !== undefined) u.name = name;
+      showMsg('"' + (u.name || u.email) + '" 저장됨 (역할: ' + role + ', 활성: ' + (isActive?'O':'X') + ')');
       renderRows();
       return true;
     }
     window.saveRow = function(i){
       const role = document.getElementById('role-'+i).value;
       const isActive = document.getElementById('active-'+i).checked;
-      update(i, role, isActive);
+      const name = document.getElementById('name-'+i).value.trim();
+      update(i, role, isActive, name);
     };
-    window.approve = function(i){ update(i, 'user', true); };   // 승인 = user + 활성
+    window.approve = function(i){ const nameEl=document.getElementById('name-'+i); const name=nameEl?nameEl.value.trim():undefined; update(i, 'user', true, name); };   // 승인 = user + 활성 (+이름)
 
     // 목록 불러오기
     async function loadUsers(){
@@ -198,3 +202,4 @@
   </script>
 </body>
 </html>
+
