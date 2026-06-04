@@ -361,7 +361,9 @@
       const fee    = feeBase * ((channel.commission_rate||0)/100);
       const ad     = channel.ad_type==='fixed' ? adVal : supply*(adVal/100);
       const promo  = channel.promotion_type==='fixed' ? promoVal : supply*(promoVal/100);
-      const freight= (freightMap[temp]||0);
+      const _cap = product && product.box_capacity ? Number(product.box_capacity) : 0;
+      const _nBox = (_cap>0) ? Math.max(1, Math.ceil(boxQty/_cap)) : 1;
+      const freight= (freightMap[temp]||0) * _nBox;
       const hq     = channel.hq_type==='fixed' ? hqVal : supply*(hqVal/100);
       const div    = channel.div_type==='fixed' ? divVal : supply*(divVal/100);
       const opProfit = supply-cost-fee-ad-promo-freight-hq-div;
@@ -632,6 +634,7 @@
 </script>
 </body>
 </html>
+
 
 
 
