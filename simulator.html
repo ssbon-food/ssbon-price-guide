@@ -966,6 +966,13 @@
   }
 
   // price=해당 가격대(정상/상시/최대), normalP=정상판매가(직납 기준점). 위탁은 normalP 무시.
+  // 택배 박스 수 계산: 입수량 ÷ 박스적재수량 올림 (적재수량 없으면 1박스)
+  function boxCount(boxQty){
+    const cap = currentProduct && currentProduct.box_capacity ? Number(currentProduct.box_capacity) : 0;
+    if(!cap || cap<=0) return 1;
+    return Math.max(1, Math.ceil(boxQty / cap));
+  }
+
   // 특정 채널 객체 기준으로 손익 계산 (화면 입력값에 의존하지 않음 · 모달의 채널별 이익률용)
   // chLogi: 그 채널의 품온별 {dRate, dDist, consign} (직납이면 channel_logistics에서 조회)
   function calcProfitForChannel(ch, price, boxQty, normalP, chLogi){
@@ -993,7 +1000,7 @@
     } else {
       const supply=vatEx;
       const fee=supply*(feeRate/100), ad=supply*(adVal/100), promo=supply*(promoVal/100);
-      const freight=fm.consign||0, hq=supply*(hqVal/100), div=supply*(divVal/100);
+      const freight=(fm.consign||0)*boxCount(boxQty), hq=supply*(hqVal/100), div=supply*(divVal/100);
       const opProfit=supply-cost-fee-ad-promo-freight-hq-div;
       return { supply, opProfit, opRate: supply>0?opProfit/supply*100:0 };
     }
@@ -1050,12 +1057,15 @@
       const fee    = feeBase * (numV('feeRate')/100);
       const ad     = $('adType').value==='fixed' ? adVal : supply*(adVal/100);
       const promo  = $('promoType').value==='fixed' ? promoVal : supply*(promoVal/100);
-      const freight= ($('freightType').value==='fixed') ? numV('freightValue') : supply*(numV('freightValue')/100);
+      // 운반비: 입력값은 '박스 1개당 단위' → 필요 박스 수만큼 곱함
+      const nBox   = boxCount(boxQty);
+      const freightUnit = ($('freightType').value==='fixed') ? numV('freightValue') : supply*(numV('freightValue')/100);
+      const freight= freightUnit * nBox;
       const hq     = $('hqType').value==='fixed' ? hqVal : supply*(hqVal/100);
       const div    = $('divType').value==='fixed' ? divVal : supply*(divVal/100);
       const opProfit = supply-cost-fee-ad-promo-freight-hq-div;
       const opRate   = supply>0 ? opProfit/supply*100 : 0;
-      return {price,vatEx,distRate:0,distProfit:0,supply,cost,fee,ad,promo,freight,hq,div,discShare:0,opProfit,opRate,isDirect:false};
+      return {price,vatEx,distRate:0,distProfit:0,supply,cost,fee,ad,promo,freight,freightUnit,nBox,hq,div,discShare:0,opProfit,opRate,isDirect:false};
     }
   }
 
@@ -1155,7 +1165,7 @@
       html += row('지급수수료', won(r.fee), {p2:pp(r.fee)});
       html += row('광고선전비', won(r.ad), {p2:pp(r.ad)});
       html += row('판매촉진비', won(r.promo), {p2:pp(r.promo)});
-      html += row('운반비', won(r.freight), {p2:pp(r.freight)});
+      html += row(r.nBox>1 ? `운반비 (${won(r.freightUnit)}×${r.nBox}박스)` : '운반비', won(r.freight), {p2:pp(r.freight)});
       html += row('본부공통비', won(r.hq), {p2:pp(r.hq)});
       html += row('부문공통비', won(r.div), {p2:pp(r.div)});
       html += `<div class="dvl"></div>`;
@@ -1525,6 +1535,7 @@
 </script>
 </body>
 </html>
+
 
 
 
