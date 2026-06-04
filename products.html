@@ -164,6 +164,7 @@
             <th class="sortable" data-sort="temperature">품온<span class="sort-ind"></span></th>
             <th class="sortable" data-sort="name">품목명<span class="sort-ind"></span></th>
             <th class="sortable num" data-sort="unit_weight">단량(g)<span class="sort-ind"></span></th>
+            <th class="sortable num" data-sort="box_capacity">박스적재<span class="sort-ind"></span></th>
             <th class="sortable num" data-sort="unit_cost">원가(EA)<span class="sort-ind"></span></th>
             <th class="sortable num" data-sort="normal_price">정상가(EA)<span class="sort-ind"></span></th>
             <th class="sortable" data-sort="is_active">상태<span class="sort-ind"></span></th>
@@ -212,7 +213,7 @@
     <div class="modal-body" style="grid-template-columns:1fr;gap:14px;">
       <div style="font-size:13px;color:var(--muted);line-height:1.6;">
         엑셀/스프레드시트에서 복사해 붙여넣거나, CSV 파일을 올리세요.<br>
-        <b>컬럼 순서:</b> ERP코드, 고객, 제/상품, 관리유형, 품목유형, 브랜드, 품온, 품목명, 단량(g), 원가, 정상판매가<br>
+        <b>컬럼 순서:</b> ERP코드, 고객, 제/상품, 관리유형, 품목유형, 브랜드, 품온, 품목명, 단량(g), 원가, 정상판매가, <b>박스적재수량(선택)</b><br>
         품온은 <b>실온 / 냉장 / 냉동</b> 중 하나. 첫 줄이 머리글(예: "ERP코드")이면 자동으로 건너뜁니다.
       </div>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
@@ -285,6 +286,10 @@
       <div class="field">
         <label>단량 (g)</label>
         <input id="f-weight" class="num" inputmode="numeric" placeholder="0" />
+      </div>
+      <div class="field">
+        <label>박스 적재수량 <span style="font-weight:400;color:var(--muted);font-size:11px;">(택배 1박스 최대 개수)</span></label>
+        <input id="f-boxcap" class="num" inputmode="numeric" placeholder="비우면 한도 없음" />
       </div>
       <div class="field">
         <label>상품원가 (원/EA, VAT별도)</label>
@@ -397,7 +402,7 @@
     // 정렬
     list.sort((a,b)=>{
       let va=a[sortKey], vb=b[sortKey];
-      if(["unit_weight","unit_cost","normal_price"].includes(sortKey)){
+      if(["unit_weight","unit_cost","normal_price","box_capacity"].includes(sortKey)){
         va=Number(va)||0; vb=Number(vb)||0;
         return sortAsc ? va-vb : vb-va;
       }
@@ -433,6 +438,7 @@
         <td><span class="temp-tag">${esc(p.temperature)}</span></td>
         <td class="name-cell">${esc(p.name)}</td>
         <td class="num">${comma(p.unit_weight)}</td>
+        <td class="num">${p.box_capacity?comma(p.box_capacity):'<span style="color:var(--muted);">-</span>'}</td>
         <td class="num">${comma(p.unit_cost)}</td>
         <td class="num">${comma(p.normal_price)}</td>
         <td>${p.is_active===false?'<span class="status-off">비활성</span>':'<span class="status-on">활성</span>'}</td>
@@ -540,7 +546,7 @@
 
   // 예시 채우기
   $("bulk-sample") && $("bulk-sample").addEventListener("click", ()=>{
-    $("bulk-text").value = "ERP코드,고객,제/상품,관리유형,품목유형,브랜드,품온,품목명,단량,원가,정상판매가\nA001,쿠팡,제품,자사,죽,순수본,냉장,순수본 전복죽,500,3200,5900\nA002,네이버,상품,위탁,청,순수본,실온,배도라지청,1500,5775,19500";
+    $("bulk-text").value = "ERP코드,고객,제/상품,관리유형,품목유형,브랜드,품온,품목명,단량,원가,정상판매가,박스적재수량\nA001,쿠팡,제품,자사,죽,순수본,냉장,순수본 전복죽,500,3200,5900,12\nA002,네이버,상품,위탁,청,순수본,실온,배도라지청,1500,5775,19500,5";
   });
 
   // CSV 파일 읽기
@@ -585,7 +591,7 @@
     const ok=[], errs=[];
     lines.forEach((line, i)=>{
       const cols = splitLine(line).map(s=>s.trim());
-      const [code,customer,make_type,manage_type,item_type,brand,temp,name,weight,cost,normal] = cols;
+      const [code,customer,make_type,manage_type,item_type,brand,temp,name,weight,cost,normal,boxcap] = cols;
       const rowNo = i+1;
       const problems = [];
       if(cols.length < 11) problems.push("컬럼이 11개 미만");
@@ -603,6 +609,7 @@
           customer:customer||null, make_type:make_type||null, manage_type:manage_type||null,
           item_type:item_type||null, brand:brand||null,
           unit_weight: unComma(weight), unit_cost: unComma(cost), normal_price: unComma(normal),
+          box_capacity: (boxcap && String(boxcap).trim()) ? unComma(boxcap) : null,
         });
       }
     });
@@ -613,9 +620,9 @@
     if(ok.length>0){
       html += `<div style="margin:6px 0 4px;font-weight:600;color:var(--accent);">✓ 등록 가능 ${ok.length}건</div>`;
       html += '<div style="max-height:180px;overflow:auto;border:1px solid var(--line);border-radius:8px;"><table style="width:100%;font-size:12px;border-collapse:collapse;">';
-      html += '<thead><tr style="background:#fafbfa;"><th style="padding:5px 8px;text-align:left;">ERP</th><th style="padding:5px 8px;">고객</th><th style="padding:5px 8px;">제/상품</th><th style="padding:5px 8px;">관리유형</th><th style="padding:5px 8px;">품목유형</th><th style="padding:5px 8px;">브랜드</th><th style="padding:5px 8px;">품온</th><th style="padding:5px 8px;text-align:left;">품목명</th><th style="padding:5px 8px;text-align:right;">단량</th><th style="padding:5px 8px;text-align:right;">원가</th><th style="padding:5px 8px;text-align:right;">정상가</th></tr></thead><tbody>';
+      html += '<thead><tr style="background:#fafbfa;"><th style="padding:5px 8px;text-align:left;">ERP</th><th style="padding:5px 8px;">고객</th><th style="padding:5px 8px;">제/상품</th><th style="padding:5px 8px;">관리유형</th><th style="padding:5px 8px;">품목유형</th><th style="padding:5px 8px;">브랜드</th><th style="padding:5px 8px;">품온</th><th style="padding:5px 8px;text-align:left;">품목명</th><th style="padding:5px 8px;text-align:right;">단량</th><th style="padding:5px 8px;text-align:right;">원가</th><th style="padding:5px 8px;text-align:right;">정상가</th><th style="padding:5px 8px;text-align:right;">박스적재</th></tr></thead><tbody>';
       ok.forEach(p=>{
-        html += `<tr style="border-top:1px solid var(--line);"><td style="padding:5px 8px;">${esc(p.code)}</td><td style="padding:5px 8px;">${esc(p.customer||"")}</td><td style="padding:5px 8px;">${esc(p.make_type||"")}</td><td style="padding:5px 8px;">${esc(p.manage_type||"")}</td><td style="padding:5px 8px;">${esc(p.item_type||"")}</td><td style="padding:5px 8px;">${esc(p.brand||"")}</td><td style="padding:5px 8px;text-align:center;">${esc(p.temperature)}</td><td style="padding:5px 8px;">${esc(p.name)}</td><td style="padding:5px 8px;text-align:right;">${p.unit_weight.toLocaleString()}</td><td style="padding:5px 8px;text-align:right;">${p.unit_cost.toLocaleString()}</td><td style="padding:5px 8px;text-align:right;">${p.normal_price.toLocaleString()}</td></tr>`;
+        html += `<tr style="border-top:1px solid var(--line);"><td style="padding:5px 8px;">${esc(p.code)}</td><td style="padding:5px 8px;">${esc(p.customer||"")}</td><td style="padding:5px 8px;">${esc(p.make_type||"")}</td><td style="padding:5px 8px;">${esc(p.manage_type||"")}</td><td style="padding:5px 8px;">${esc(p.item_type||"")}</td><td style="padding:5px 8px;">${esc(p.brand||"")}</td><td style="padding:5px 8px;text-align:center;">${esc(p.temperature)}</td><td style="padding:5px 8px;">${esc(p.name)}</td><td style="padding:5px 8px;text-align:right;">${p.unit_weight.toLocaleString()}</td><td style="padding:5px 8px;text-align:right;">${p.unit_cost.toLocaleString()}</td><td style="padding:5px 8px;text-align:right;">${p.normal_price.toLocaleString()}</td><td style="padding:5px 8px;text-align:right;">${p.box_capacity?p.box_capacity:"-"}</td></tr>`;
       });
       html += '</tbody></table></div>';
     }
@@ -662,6 +669,7 @@
     $("f-item_type").value   = p?(p.item_type||""):"";
     $("f-brand").value       = p?(p.brand||""):"";
     $("f-weight").value=p?comma(p.unit_weight):"";
+    $("f-boxcap").value=p&&p.box_capacity?comma(p.box_capacity):"";
     $("f-cost").value=p?comma(p.unit_cost):"";
     $("f-normal").value=p?comma(p.normal_price):"";
     // 삭제 버튼: 수정 모드(기존 상품)에서만 표시
@@ -709,6 +717,7 @@
       item_type:   $("f-item_type").value.trim()||null,
       brand:       $("f-brand").value.trim()||null,
       unit_weight:unComma($("f-weight").value),
+      box_capacity: $("f-boxcap").value.trim() ? unComma($("f-boxcap").value) : null,
       unit_cost:unComma($("f-cost").value),
       normal_price:unComma($("f-normal").value),
       updated_by:me.id,
@@ -886,6 +895,7 @@
 </script>
 </body>
 </html>
+
 
 
 
