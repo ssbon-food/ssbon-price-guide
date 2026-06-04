@@ -132,6 +132,8 @@
     .sc-modal-head h3{font-size:16px;font-weight:700;color:var(--ink);}
     .sc-modal-close{background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted);padding:0 4px;}
     .sc-modal-body{padding:8px 0;max-height:420px;overflow-y:auto;}
+    .sc-tab{flex:1;padding:8px 12px;border:1px solid var(--line);border-radius:8px;background:#fafbfa;font-family:inherit;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;}
+    .sc-tab.active{background:var(--accent);color:#fff;border-color:var(--accent);}
     .sc-item{padding:14px 22px;border-bottom:1px solid #f0f2f0;display:flex;align-items:center;justify-content:space-between;gap:12px;}
     .sc-item:hover{background:#f7faf8;}
     .sc-item-info{flex:1;min-width:0;}
@@ -407,8 +409,12 @@
 <div class="sc-modal-bg" id="sc-modal-bg">
   <div class="sc-modal">
     <div class="sc-modal-head">
-      <h3>📂 저장된 시나리오</h3>
+      <h3>📂 시나리오</h3>
       <button class="sc-modal-close" id="sc-modal-close">&times;</button>
+    </div>
+    <div style="display:flex;gap:6px;padding:10px 22px 0;">
+      <button class="sc-tab" id="sc-tab-mine" data-tab="mine">📁 내 시나리오</button>
+      <button class="sc-tab" id="sc-tab-shared" data-tab="shared">🌐 공유 시나리오</button>
     </div>
     <div class="sc-modal-body" id="sc-modal-body">
       <div class="sc-empty">불러오는 중...</div>
@@ -1340,48 +1346,117 @@
   $('sc-modal-close').addEventListener('click', ()=>$('sc-modal-bg').classList.remove('show'));
   $('sc-modal-bg').addEventListener('click', (e)=>{ if(e.target.id==='sc-modal-bg') $('sc-modal-bg').classList.remove('show'); });
 
-  async function openScenarioModal(){
+  let scTab = 'mine';
+  function openScenarioModal(){
     $('sc-modal-bg').classList.add('show');
+    selectScTab('mine');
+  }
+  document.querySelectorAll('.sc-tab').forEach(btn=>{
+    btn.addEventListener('click', ()=>selectScTab(btn.dataset.tab));
+  });
+  function selectScTab(tab){
+    scTab = tab;
+    document.querySelectorAll('.sc-tab').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
+    if(tab==='mine') renderMine(); else renderShared();
+  }
+
+  // ── 내 시나리오 ──
+  async function renderMine(){
     const body = $('sc-modal-body');
     body.innerHTML = '<div class="sc-empty">불러오는 중...</div>';
     const { data, error } = await sb.from('scenarios').select('*').eq('user_id', me.id).order('created_at',{ascending:false});
     if (error){ body.innerHTML = '<div class="sc-empty">불러오기 실패: '+error.message+'</div>'; return; }
     if (!data || data.length===0){ body.innerHTML = '<div class="sc-empty">저장된 시나리오가 없어요.</div>'; return; }
-
-    // title + created_at(초단위)로 그룹핑 (한 번에 저장한 입수량 행들을 묶음)
     const groups = {};
     data.forEach(r=>{
       const key = r.title + '||' + (r.created_at||'').slice(0,19);
       if(!groups[key]) groups[key] = { title:r.title, created_at:r.created_at, product_id:r.product_id, channel_id:r.channel_id, rows:[], ids:[] };
-      groups[key].rows.push(r);
-      groups[key].ids.push(r.id);
+      groups[key].rows.push(r); groups[key].ids.push(r.id);
     });
-
     const list = Object.values(groups);
-    body.innerHTML = list.map((g, i)=>{
+    body.innerHTML = list.map((g,i)=>{
       const prod = allProducts.find(p=>String(p.id)===String(g.product_id));
       const chan = allChannels.find(ch=>String(ch.id)===String(g.channel_id));
       const dateStr = g.created_at ? new Date(g.created_at).toLocaleString('ko-KR',{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
       const sub = `${prod?prod.name:'(삭제된 상품)'} · ${chan?chan.name:'(삭제된 채널)'} · ${g.rows.length}개 입수량 · ${dateStr}`;
       return `<div class="sc-item">
-        <div class="sc-item-info">
-          <div class="sc-item-title">${esc(g.title)}</div>
-          <div class="sc-item-sub">${esc(sub)}</div>
-        </div>
+        <div class="sc-item-info"><div class="sc-item-title">${esc(g.title)}</div><div class="sc-item-sub">${esc(sub)}</div></div>
         <div class="sc-item-btns">
           <button class="sc-btn-load" data-idx="${i}">불러오기</button>
+          <button class="sc-btn-share" data-idx="${i}">📤 공유</button>
           <button class="sc-btn-del" data-idx="${i}">삭제</button>
         </div>
       </div>`;
     }).join('');
+    body.querySelectorAll('.sc-btn-load').forEach(btn=>btn.addEventListener('click', ()=>loadScenario(list[+btn.dataset.idx])));
+    body.querySelectorAll('.sc-btn-del').forEach(btn=>btn.addEventListener('click', ()=>deleteScenario(list[+btn.dataset.idx])));
+    body.querySelectorAll('.sc-btn-share').forEach(btn=>btn.addEventListener('click', ()=>shareScenario(list[+btn.dataset.idx])));
+  }
 
-    // 이벤트 연결
-    body.querySelectorAll('.sc-btn-load').forEach(btn=>{
-      btn.addEventListener('click', ()=>loadScenario(list[parseInt(btn.dataset.idx)]));
+  // ── 시나리오 공유하기 (복사본 생성) ──
+  async function shareScenario(group){
+    const prod = allProducts.find(p=>String(p.id)===String(group.product_id));
+    const chan = allChannels.find(ch=>String(ch.id)===String(group.channel_id));
+    if(!confirm(`'${group.title}' 시나리오를 전 직원과 공유할까요?`)) return;
+    // 같은 제목으로 내가 이미 공유한 게 있으면 덮어쓰기
+    const { data:dup } = await sb.from('shared_scenarios').select('id').eq('shared_by', me.id).eq('title', group.title);
+    if(dup && dup.length>0){
+      if(!confirm(`'${group.title}' 이름으로 이미 공유한 시나리오가 있어요.\n덮어쓸까요?`)) return;
+      await sb.from('shared_scenarios').delete().eq('shared_by', me.id).eq('title', group.title);
+    }
+    const sharedAt = new Date().toISOString();
+    const rows = group.rows.map(r=>({
+      shared_by: me.id, shared_by_name: (me.name||me.email||''),
+      title: group.title,
+      product_id: group.product_id, product_name: prod?prod.name:'',
+      channel_id: group.channel_id, channel_name: chan?chan.name:'',
+      box_qty: r.box_qty, normal_price: r.normal_price, always_price: r.always_price, max_price: r.max_price,
+      shared_at: sharedAt,
+    }));
+    const { error } = await sb.from('shared_scenarios').insert(rows);
+    if(error){ alert('공유 실패: '+error.message); return; }
+    flash('✓ 공유됐어요');
+  }
+
+  // ── 공유 시나리오 ──
+  async function renderShared(){
+    const body = $('sc-modal-body');
+    body.innerHTML = '<div class="sc-empty">불러오는 중...</div>';
+    const { data, error } = await sb.from('shared_scenarios').select('*').order('shared_at',{ascending:false});
+    if (error){ body.innerHTML = '<div class="sc-empty">불러오기 실패: '+error.message+'</div>'; return; }
+    if (!data || data.length===0){ body.innerHTML = '<div class="sc-empty">공유된 시나리오가 없어요.</div>'; return; }
+    const groups = {};
+    data.forEach(r=>{
+      const key = r.shared_by + '||' + r.title + '||' + (r.shared_at||'').slice(0,19);
+      if(!groups[key]) groups[key] = { title:r.title, shared_by:r.shared_by, shared_by_name:r.shared_by_name, shared_at:r.shared_at,
+        product_id:r.product_id, product_name:r.product_name, channel_id:r.channel_id, channel_name:r.channel_name, rows:[], ids:[] };
+      groups[key].rows.push(r); groups[key].ids.push(r.id);
     });
-    body.querySelectorAll('.sc-btn-del').forEach(btn=>{
-      btn.addEventListener('click', ()=>deleteScenario(list[parseInt(btn.dataset.idx)]));
-    });
+    const list = Object.values(groups);
+    const canDelAll = (me.role==='master'||me.role==='admin');
+    body.innerHTML = list.map((g,i)=>{
+      const dateStr = g.shared_at ? new Date(g.shared_at).toLocaleString('ko-KR',{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
+      const sub = `${g.product_name||'(상품)'} · ${g.channel_name||'(채널)'} · ${g.rows.length}개 입수량`;
+      const by = `👤 ${esc(g.shared_by_name||'알 수 없음')} · ${dateStr}`;
+      const canDel = canDelAll || g.shared_by===me.id;
+      return `<div class="sc-item">
+        <div class="sc-item-info"><div class="sc-item-title">${esc(g.title)}</div><div class="sc-item-sub">${esc(sub)}</div><div class="sc-item-sub" style="color:var(--accent);">${by}</div></div>
+        <div class="sc-item-btns">
+          <button class="sc-btn-load" data-idx="${i}">불러오기</button>
+          ${canDel?`<button class="sc-btn-del" data-idx="${i}">삭제</button>`:''}
+        </div>
+      </div>`;
+    }).join('');
+    body.querySelectorAll('.sc-btn-load').forEach(btn=>btn.addEventListener('click', ()=>loadScenario(list[+btn.dataset.idx])));
+    body.querySelectorAll('.sc-btn-del').forEach(btn=>btn.addEventListener('click', ()=>deleteSharedScenario(list[+btn.dataset.idx])));
+  }
+
+  async function deleteSharedScenario(group){
+    if(!confirm(`공유 시나리오 '${group.title}'을(를) 삭제할까요?`)) return;
+    const { error } = await sb.from('shared_scenarios').delete().in('id', group.ids);
+    if(error){ alert('삭제 실패: '+error.message); return; }
+    flash('✓ 삭제됐어요');
+    renderShared();
   }
 
   async function loadScenario(group){
@@ -1450,6 +1525,7 @@
 </script>
 </body>
 </html>
+
 
 
 
